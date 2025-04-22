@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { FaEye, FaEyeSlash } from "react-icons/fa";
 
 export default function SignUpPage() {
   const [email, setEmail] = useState("");
@@ -10,35 +12,31 @@ export default function SignUpPage() {
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const { signup } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    setError("");
 
     if (password !== confirmPassword) {
       setError("Passwords do not match");
-      setLoading(false);
       return;
     }
 
     try {
-      const response = await fetch("/api/auth/signup", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ email, password }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Signup failed");
+      setError("");
+      setLoading(true);
+      await signup(email, password);
+      router.push("/dashboard/bookings");
+    } catch (err) {
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("Failed to create an account");
       }
-
-      router.push("/auth/signin");
-    } catch {
-      setError("Failed to create account. Please try again.");
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -90,7 +88,7 @@ export default function SignUpPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="peer w-full rounded-xl border-2 border-gray-800 bg-gray-900/50 px-4 py-2.5 text-white placeholder-transparent transition-all duration-300 focus:border-purple-500 focus:outline-none focus:ring-0"
+                className="peer w-full rounded-xl border-2 border-gray-800 bg-gray-900/50 px-4 py-2.5 text-white placeholder-transparent transition-all duration-300 focus:border-purple-500 focus:outline-none focus:ring-0 [&:-webkit-autofill]:!bg-[#111827] [&:-webkit-autofill]:!text-white [&:-webkit-autofill]:![box-shadow:0_0_0_30px_#111827_inset] [&:-webkit-autofill]:[text-fill-color:rgb(255,255,255)]"
                 placeholder="Email Address"
                 required
               />
@@ -105,13 +103,20 @@ export default function SignUpPage() {
             <div className="group relative">
               <input
                 id="password"
-                type="password"
+                type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="peer w-full rounded-xl border-2 border-gray-800 bg-gray-900/50 px-4 py-2.5 text-white placeholder-transparent transition-all duration-300 focus:border-purple-500 focus:outline-none focus:ring-0"
+                className="peer w-full rounded-xl border-2 border-gray-800 bg-gray-900/50 px-4 py-2.5 text-white placeholder-transparent transition-all duration-300 focus:border-purple-500 focus:outline-none focus:ring-0 [&:-webkit-autofill]:!bg-[#111827] [&:-webkit-autofill]:!text-white [&:-webkit-autofill]:![box-shadow:0_0_0_30px_#111827_inset] [&:-webkit-autofill]:[text-fill-color:rgb(255,255,255)]"
                 placeholder="Password"
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300 focus:outline-none"
+              >
+                {showPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
+              </button>
               <label
                 htmlFor="password"
                 className="absolute -top-2.5 left-4 bg-gray-900/50 px-1 text-sm text-gray-400 transition-all duration-300 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:bg-transparent peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-500 peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-purple-400"
@@ -122,16 +127,27 @@ export default function SignUpPage() {
 
             <div className="group relative">
               <input
-                id="confirmPassword"
-                type="password"
+                id="confirm-password"
+                type={showConfirmPassword ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="peer w-full rounded-xl border-2 border-gray-800 bg-gray-900/50 px-4 py-2.5 text-white placeholder-transparent transition-all duration-300 focus:border-purple-500 focus:outline-none focus:ring-0"
+                className="peer w-full rounded-xl border-2 border-gray-800 bg-gray-900/50 px-4 py-2.5 text-white placeholder-transparent transition-all duration-300 focus:border-purple-500 focus:outline-none focus:ring-0 [&:-webkit-autofill]:!bg-[#111827] [&:-webkit-autofill]:!text-white [&:-webkit-autofill]:![box-shadow:0_0_0_30px_#111827_inset] [&:-webkit-autofill]:[text-fill-color:rgb(255,255,255)]"
                 placeholder="Confirm Password"
                 required
               />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300 focus:outline-none"
+              >
+                {showConfirmPassword ? (
+                  <FaEyeSlash size={18} />
+                ) : (
+                  <FaEye size={18} />
+                )}
+              </button>
               <label
-                htmlFor="confirmPassword"
+                htmlFor="confirm-password"
                 className="absolute -top-2.5 left-4 bg-gray-900/50 px-1 text-sm text-gray-400 transition-all duration-300 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:bg-transparent peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-500 peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-purple-400"
               >
                 Confirm Password

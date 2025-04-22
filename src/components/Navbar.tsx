@@ -3,11 +3,21 @@ import { Button } from "@/components/ui/button";
 import { FaBars } from "react-icons/fa";
 import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    try {
+      await logout();
+      router.push("/auth/signin");
+    } catch (error) {
+      console.error("Error signing out:", error);
+    }
+  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b border-gray-800/50 bg-gray-900/50 backdrop-blur supports-[backdrop-filter]:bg-gray-900/50">
@@ -32,7 +42,7 @@ export function Navbar() {
             <Button
               variant="ghost"
               className="text-gray-400 hover:text-white"
-              onClick={() => signOut()}
+              onClick={handleSignOut}
             >
               Sign Out
             </Button>
@@ -58,7 +68,7 @@ export function Navbar() {
               <Button
                 variant="ghost"
                 className="text-gray-400 hover:text-white justify-start"
-                onClick={() => signOut()}
+                onClick={handleSignOut}
               >
                 Sign Out
               </Button>
