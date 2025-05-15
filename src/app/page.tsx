@@ -2,25 +2,25 @@
 
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
 
 export default function Home() {
-  const { user, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading) {
-      if (user) {
-        router.push("/dashboard/bookings");
-      } else {
-        router.push("/auth/signin");
-      }
+    // Check if there's a token in local storage
+    const token =
+      typeof window !== "undefined" ? localStorage.getItem("adminToken") : null;
+
+    if (token) {
+      router.push("/dashboard");
+    } else {
+      router.push("/auth/signin");
     }
-  }, [user, loading, router]);
+  }, [router]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="animate-spin rounded-full h-32 w-32 border-t-2 border-b-2 border-purple-500"></div>
-    </div>
+    <main className="flex min-h-screen items-center justify-center bg-gray-50">
+      <div className="w-12 h-12 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin"></div>
+    </main>
   );
 }

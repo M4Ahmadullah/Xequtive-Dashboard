@@ -1,10 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { authAPI } from "@/lib/api";
 
 export default function SignInPage() {
   const [email, setEmail] = useState("");
@@ -12,7 +12,6 @@ export default function SignInPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const { login } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -21,14 +20,14 @@ export default function SignInPage() {
     setError("");
 
     try {
-      await login(email, password);
-      router.push("/dashboard/bookings");
-    } catch (error) {
-      if (error instanceof Error) {
-        setError(error.message);
+      const result = await authAPI.login(email, password);
+      if (result.success) {
+        router.push("/dashboard");
       } else {
-        setError("Invalid email or password");
+        setError(result.error?.message || "Invalid email or password");
       }
+    } catch {
+      setError("Invalid email or password");
     } finally {
       setLoading(false);
     }

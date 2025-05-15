@@ -1,20 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { useAuth } from "@/lib/auth-context";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { FaEye, FaEyeSlash } from "react-icons/fa";
+import { authAPI } from "@/lib/api";
 
 export default function SignUpPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const { signup } = useAuth();
   const router = useRouter();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -25,18 +25,31 @@ export default function SignUpPage() {
       return;
     }
 
+    if (!fullName) {
+      setError("Full name is required");
+      return;
+    }
+
     try {
       setError("");
       setLoading(true);
-      await signup(email, password);
-      router.push("/dashboard/bookings");
-    } catch (err) {
-      if (err instanceof Error) {
-        setError(err.message);
+
+      // Using createAdmin function to sign up
+      const result = await authAPI.createAdmin({
+        email,
+        password,
+        fullName,
+        confirmPassword,
+      });
+
+      if (result.success) {
+        router.push("/auth/signin");
       } else {
-        setError("Failed to create an account");
+        setError(result.error?.message || "Failed to create an account");
       }
-      console.error(err);
+    } catch {
+      setError("Failed to create an account");
+      console.error("Signup failed");
     } finally {
       setLoading(false);
     }
@@ -82,6 +95,25 @@ export default function SignUpPage() {
 
         <form onSubmit={handleSubmit} className="space-y-8">
           <div className="space-y-4">
+            {/* Full Name field */}
+            <div className="group relative">
+              <input
+                id="fullName"
+                type="text"
+                value={fullName}
+                onChange={(e) => setFullName(e.target.value)}
+                className="peer w-full rounded-xl border-2 border-gray-800 bg-gray-900/50 px-4 py-2.5 text-white placeholder-transparent transition-all duration-300 focus:border-purple-500 focus:outline-none focus:ring-0 [&:-webkit-autofill]:!bg-[#111827] [&:-webkit-autofill]:!text-white [&:-webkit-autofill]:![box-shadow:0_0_0_30px_#111827_inset] [&:-webkit-autofill]:[text-fill-color:rgb(255,255,255)]"
+                placeholder="Full Name"
+                required
+              />
+              <label
+                htmlFor="fullName"
+                className="absolute -top-2.5 left-4 bg-gray-900/50 px-1 text-sm text-gray-400 transition-all duration-300 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:bg-transparent peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-500 peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-purple-400"
+              >
+                Full Name
+              </label>
+            </div>
+
             <div className="group relative">
               <input
                 id="email"

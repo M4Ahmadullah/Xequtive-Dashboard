@@ -1,208 +1,218 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { useAuth } from "@/contexts/AuthContext";
-import {
-  FaCar,
-  FaChartLine,
-  FaSignOutAlt,
-  FaTimes,
-  FaBars,
-  FaChevronLeft,
-  FaChevronRight,
-} from "react-icons/fa";
+import { usePathname, useRouter } from "next/navigation";
+import { authAPI } from "@/lib/api";
+
+// Custom authentication check component
+const AuthCheck = ({ children }: { children: React.ReactNode }) => {
+  const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      // Check if there's a token in local storage
+      const token =
+        typeof window !== "undefined"
+          ? localStorage.getItem("adminToken")
+          : null;
+
+      if (!token) {
+        router.push("/auth/signin");
+        return;
+      }
+
+      try {
+        // Verify the token with the API
+        const response = await authAPI.verifyToken();
+
+        if (response.success && response.data?.authenticated) {
+          setIsAuthenticated(true);
+        } else {
+          localStorage.removeItem("adminToken");
+          router.push("/auth/signin");
+        }
+      } catch {
+        localStorage.removeItem("adminToken");
+        router.push("/auth/signin");
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    checkAuth();
+  }, [router]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen bg-gray-50">
+        <div className="w-12 h-12 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin"></div>
+      </div>
+    );
+  }
+
+  return isAuthenticated ? <>{children}</> : null;
+};
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [mobileOpen, setMobileOpen] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
   const pathname = usePathname();
-  const { logout, user } = useAuth();
+  const router = useRouter();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
-  const navigation = [
-    {
-      name: "Bookings",
-      href: "/dashboard/bookings",
-      icon: FaCar,
-    },
-    {
-      name: "Analytics",
-      href: "/dashboard/analytics",
-      icon: FaChartLine,
-    },
+  // Fetch user information
+  useEffect(() => {
+    const fetchUserInfo = async () => {
+      try {
+        const response = await authAPI.verifyToken();
+        if (response.success && response.data?.user) {
+          setUserEmail(response.data.user.email);
+        }
+      } catch {
+        console.error("Error fetching user info");
+      }
+    };
+
+    fetchUserInfo();
+  }, []);
+
+  const navItems = [
+    { name: "Dashboard", href: "/dashboard", icon: "chart-pie" },
+    { name: "Bookings", href: "/dashboard/bookings", icon: "calendar" },
+    { name: "Users", href: "/dashboard/users", icon: "users" },
+    { name: "Analytics", href: "/dashboard/analytics", icon: "chart-bar" },
+    { name: "Settings", href: "/dashboard/settings", icon: "cog" },
   ];
 
+  const toggleSidebar = () => {
+    setIsSidebarOpen(!isSidebarOpen);
+  };
+
+  const handleLogout = async () => {
+    try {
+      await authAPI.logout();
+      router.push("/auth/signin");
+    } catch {
+      console.error("Logout error");
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gray-950">
-      {/* Mobile sidebar */}
-      <div
-        className={`fixed inset-0 z-40 lg:hidden ${
-          mobileOpen ? "block" : "hidden"
-        }`}
-      >
+    <AuthCheck>
+      <div className="min-h-screen bg-gray-50">
+        {/* Mobile Sidebar Backdrop */}
+        {isSidebarOpen && (
+          <div
+            className="fixed inset-0 z-20 bg-gray-900/50 lg:hidden"
+            onClick={toggleSidebar}
+          ></div>
+        )}
+
+        {/* Sidebar */}
         <div
-          className="fixed inset-0 bg-gray-950/80 backdrop-blur-sm"
-          onClick={() => setMobileOpen(false)}
-        />
-        <div className="fixed inset-y-0 left-0 w-64 bg-gray-900 shadow-xl">
-          <div className="flex flex-col h-16 px-4">
-            <div className="flex items-center justify-between h-16 border-b border-gray-800">
-              <div className="flex items-center space-x-3">
-                <div className="relative w-8 h-8">
-                  <div className="absolute inset-0 bg-gradient-to-tr from-purple-600 to-blue-400 rounded-lg"></div>
-                  <span className="absolute inset-0 flex items-center justify-center text-white font-bold text-xl">
-                    X
-                  </span>
-                </div>
-                <span className="text-xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent">
-                  Xequtive
+          className={`fixed inset-y-0 left-0 z-30 w-64 transform bg-indigo-700 transition-transform duration-300 lg:translate-x-0 ${
+            isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+          }`}
+        >
+          <div className="flex h-16 items-center justify-between px-4">
+            <div className="text-xl font-bold text-white">Xequtive</div>
+            <button
+              onClick={toggleSidebar}
+              className="rounded-md p-1 text-indigo-200 hover:bg-indigo-800 hover:text-white lg:hidden"
+            >
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+
+          <nav className="mt-5 px-2">
+            <ul className="space-y-1">
+              {navItems.map((item) => {
+                const isActive =
+                  pathname === item.href ||
+                  pathname.startsWith(`${item.href}/`);
+                return (
+                  <li key={item.name}>
+                    <Link
+                      href={item.href}
+                      className={`flex items-center rounded-md px-4 py-2 text-sm font-medium ${
+                        isActive
+                          ? "bg-indigo-800 text-white"
+                          : "text-indigo-100 hover:bg-indigo-600"
+                      }`}
+                    >
+                      <i
+                        className={`fas fa-${item.icon} mr-3 text-lg ${
+                          isActive ? "text-white" : "text-indigo-300"
+                        }`}
+                      ></i>
+                      {item.name}
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          </nav>
+        </div>
+
+        <div className="lg:pl-64">
+          {/* Top Navigation */}
+          <header className="sticky top-0 z-10 flex h-16 items-center justify-between border-b border-gray-200 bg-white px-4 shadow-sm">
+            <button
+              onClick={toggleSidebar}
+              className="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-500 lg:hidden"
+            >
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
+              </svg>
+            </button>
+
+            <div className="ml-auto flex items-center space-x-4">
+              <div className="relative">
+                <span className="text-sm font-medium text-gray-600">
+                  {userEmail || "Loading..."}
                 </span>
               </div>
               <button
-                onClick={() => setMobileOpen(false)}
-                className="text-gray-400 hover:text-purple-400 transition-colors duration-300"
+                onClick={handleLogout}
+                className="rounded-md bg-indigo-100 px-3 py-1.5 text-sm font-medium text-indigo-700 hover:bg-indigo-200"
               >
-                <FaTimes className="h-6 w-6" />
+                Logout
               </button>
             </div>
-          </div>
-          <nav className="mt-5 px-3 space-y-2">
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`group flex items-center px-3 py-2.5 text-sm font-medium rounded-xl ${
-                  pathname === item.href
-                    ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg shadow-purple-500/20"
-                    : "text-gray-300 hover:bg-gray-800 hover:text-white"
-                } transition-all duration-300`}
-              >
-                <item.icon
-                  className={`mr-3 h-5 w-5 ${
-                    pathname === item.href
-                      ? "text-white"
-                      : "text-gray-400 group-hover:text-white"
-                  } transition-colors duration-300`}
-                />
-                {item.name}
-              </Link>
-            ))}
-          </nav>
-        </div>
-      </div>
-
-      {/* Desktop sidebar */}
-      <div
-        className={`hidden lg:flex lg:flex-col lg:fixed lg:inset-y-0 transition-all duration-300 ease-in-out ${
-          isExpanded ? "lg:w-64" : "lg:w-14"
-        }`}
-      >
-        <div className="flex flex-col flex-grow bg-gray-900 shadow-xl">
-          <div className="flex flex-col h-16 px-2">
-            <div className="flex items-center h-16 border-b border-gray-800">
-              <div className="flex items-center space-x-3 relative">
-                <div className="relative w-8 h-8 flex-shrink-0 ml-1">
-                  <div className="absolute inset-0 bg-gradient-to-tr from-purple-600 to-blue-400 rounded-lg"></div>
-                  <span className="absolute inset-0 flex items-center justify-center text-white font-bold text-xl">
-                    X
-                  </span>
-                </div>
-                <span
-                  className={`text-xl font-bold bg-gradient-to-r from-purple-400 to-blue-400 bg-clip-text text-transparent transition-opacity duration-300 ${
-                    isExpanded ? "opacity-100" : "opacity-0 w-0"
-                  }`}
-                >
-                  Xequtive
-                </span>
-              </div>
-            </div>
-          </div>
-          <nav className="mt-5 flex-1 px-2 space-y-2">
-            {navigation.map((item) => (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`group flex items-center px-2 py-2.5 text-sm font-medium rounded-xl ${
-                  pathname === item.href
-                    ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg shadow-purple-500/20"
-                    : "text-gray-300 hover:bg-gray-800 hover:text-white"
-                } transition-all duration-300`}
-                title={item.name}
-              >
-                <item.icon
-                  className={`h-5 w-5 ${
-                    pathname === item.href
-                      ? "text-white"
-                      : "text-gray-400 group-hover:text-white"
-                  } transition-colors duration-300`}
-                />
-                <span
-                  className={`ml-3 transition-opacity duration-300 ${
-                    isExpanded ? "opacity-100" : "opacity-0 w-0 hidden"
-                  }`}
-                >
-                  {item.name}
-                </span>
-              </Link>
-            ))}
-          </nav>
-          <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className="absolute -right-3 top-20 bg-gray-900 rounded-full p-1.5 text-gray-400 hover:text-white focus:outline-none transition-colors duration-300 shadow-lg"
-          >
-            {isExpanded ? (
-              <FaChevronLeft className="h-4 w-4" />
-            ) : (
-              <FaChevronRight className="h-4 w-4" />
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Main content */}
-      <div
-        className={`transition-all duration-300 ease-in-out ${
-          isExpanded ? "lg:pl-64" : "lg:pl-14"
-        } flex flex-col flex-1`}
-      >
-        <div className="flex-1 flex flex-col">
-          <header className="bg-gray-900 shadow-lg sticky top-0 z-10">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-              <div className="flex items-center">
-                <button
-                  onClick={() => setMobileOpen(!mobileOpen)}
-                  className="lg:hidden text-gray-400 hover:text-white focus:outline-none"
-                >
-                  <FaBars className="h-6 w-6" />
-                </button>
-                <h1 className="text-xl font-semibold text-white ml-4">
-                  Bookings
-                </h1>
-              </div>
-              <div className="flex items-center space-x-4">
-                <span className="text-sm text-gray-400">{user?.email}</span>
-                <button
-                  onClick={logout}
-                  className="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 focus:outline-none transition-colors duration-300"
-                >
-                  <FaSignOutAlt className="h-4 w-4" />
-                  <span className="text-sm">Sign out</span>
-                </button>
-              </div>
-            </div>
           </header>
-          <main className="flex-1 mt-8">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-              {children}
-            </div>
-          </main>
+
+          {/* Main Content */}
+          <main className="min-h-[calc(100vh-4rem)]">{children}</main>
         </div>
       </div>
-    </div>
+    </AuthCheck>
   );
 }

@@ -1,47 +1,29 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import { Providers } from "@/components/Providers";
+import type { Metadata } from "next";
+import { Inter } from "next/font/google";
+import Script from "next/script";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Xequtive Admin Dashboard",
-  description: "Admin dashboard for Xequtive taxi bookings",
-  icons: {
-    icon: [
-      {
-        url: "/favicon.ico",
-        sizes: "any",
-      },
-      {
-        url: "/icon.png",
-        type: "image/png",
-        sizes: "32x32",
-      },
-    ],
-  },
+  title: "Xequtive Dashboard",
+  description: "Admin dashboard for Xequtive",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-950 min-h-screen`}
-      >
-        <Providers>{children}</Providers>
+      <body className={inter.className}>
+        {children}
+        <Script
+          src="https://kit.fontawesome.com/3b5c95ab84.js"
+          crossOrigin="anonymous"
+          strategy="afterInteractive"
+        />
       </body>
     </html>
   );

@@ -1,21 +1,38 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { FaBars } from "react-icons/fa";
-import { useState } from "react";
-import { useAuth } from "@/contexts/AuthContext";
+import { useState, useEffect } from "react";
+import { authAPI } from "@/lib/api";
 import { useRouter } from "next/navigation";
+import { User } from "@/types/api";
 
 export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { user, logout } = useAuth();
+  const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
+
+  // Fetch user data
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await authAPI.verifyToken();
+        if (response.success && response.data?.user) {
+          setUser(response.data.user);
+        }
+      } catch {
+        console.error("Failed to fetch user data");
+      }
+    };
+
+    fetchUserData();
+  }, []);
 
   const handleSignOut = async () => {
     try {
-      await logout();
+      await authAPI.logout();
       router.push("/auth/signin");
-    } catch (error) {
-      console.error("Error signing out:", error);
+    } catch {
+      console.error("Error signing out");
     }
   };
 
@@ -23,7 +40,7 @@ export function Navbar() {
     <header className="sticky top-0 z-50 w-full border-b border-gray-800/50 bg-gray-900/50 backdrop-blur supports-[backdrop-filter]:bg-gray-900/50">
       <div className="container flex h-14 items-center">
         <Link
-          href="/dashboard/bookings"
+          href="/dashboard"
           className="flex items-center gap-2 mr-6"
           onClick={() => setMobileMenuOpen(false)}
         >
