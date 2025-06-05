@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { analyticsAPI } from "@/lib/api";
 import {
   RevenueAnalytics,
@@ -35,7 +35,7 @@ export default function AnalyticsPage() {
     return date.toISOString().split("T")[0];
   }
 
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
     setLoading(true);
     setError(null);
 
@@ -81,7 +81,7 @@ export default function AnalyticsPage() {
       if (activeTab === "traffic" || activeTab === "all") {
         const response = await analyticsAPI.getTrafficAnalytics(params);
         if (response.success && response.data) {
-          setTrafficData(response.data);
+          setTrafficData(response.data as unknown as TrafficAnalytics);
         } else {
           setError(
             response.error?.message || "Failed to load traffic analytics"
@@ -94,11 +94,11 @@ export default function AnalyticsPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [activeTab, dateRange, interval]);
 
   useEffect(() => {
     fetchAnalytics();
-  }, [activeTab, dateRange, interval]);
+  }, [activeTab, dateRange, interval, fetchAnalytics]);
 
   const handleTabChange = (value: string) => {
     setActiveTab(value);
@@ -108,30 +108,10 @@ export default function AnalyticsPage() {
     setDateRange((prev) => ({ ...prev, [type]: value }));
   };
 
-  const getValueWithTrend = (value: number, change: number) => {
-    return (
-      <div className="flex items-end space-x-2">
-        <div className="text-3xl font-bold">{value}</div>
-        <div
-          className={`text-sm ${
-            change > 0
-              ? "text-green-500"
-              : change < 0
-              ? "text-red-500"
-              : "text-gray-500"
-          }`}
-        >
-          {change > 0 ? "+" : ""}
-          {change}%
-        </div>
-      </div>
-    );
-  };
-
   if (loading && !revenueData && !bookingData && !userData && !trafficData) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="w-12 h-12 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin"></div>
+        <div className="w-12 h-12 border-4 border-gray-700 border-t-purple-600 rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -139,11 +119,11 @@ export default function AnalyticsPage() {
   if (error && !revenueData && !bookingData && !userData && !trafficData) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4 w-full max-w-3xl">
+        <div className="bg-red-900/20 border-l-4 border-red-500 p-4 mb-4 w-full max-w-3xl">
           <div className="flex">
             <div className="flex-shrink-0">
               <svg
-                className="h-5 w-5 text-red-400"
+                className="h-5 w-5 text-red-500"
                 viewBox="0 0 20 20"
                 fill="currentColor"
               >
@@ -155,13 +135,13 @@ export default function AnalyticsPage() {
               </svg>
             </div>
             <div className="ml-3">
-              <p className="text-sm text-red-700">{error}</p>
+              <p className="text-sm text-red-300">{error}</p>
             </div>
           </div>
         </div>
         <button
           onClick={fetchAnalytics}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+          className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
         >
           Retry
         </button>
@@ -170,16 +150,20 @@ export default function AnalyticsPage() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="w-full">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 space-y-4 md:space-y-0">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Analytics</h1>
-          <p className="text-gray-600">Detailed analytics and reporting</p>
+          <h1 className="text-3xl font-bold text-white">Analytics</h1>
+          <p className="text-gray-400">
+            Detailed analytics and reporting. This dashboard provides insights
+            on revenue, bookings, users, and traffic data over custom time
+            periods.
+          </p>
         </div>
 
         <div className="flex flex-col md:flex-row space-y-2 md:space-y-0 md:space-x-4">
           <div className="flex items-center space-x-2">
-            <label htmlFor="startDate" className="text-sm text-gray-600">
+            <label htmlFor="startDate" className="text-sm text-gray-300">
               Start:
             </label>
             <input
@@ -187,12 +171,12 @@ export default function AnalyticsPage() {
               type="date"
               value={dateRange.startDate}
               onChange={(e) => handleDateChange("startDate", e.target.value)}
-              className="px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+              className="px-2 py-1 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm bg-gray-800 text-white"
             />
           </div>
 
           <div className="flex items-center space-x-2">
-            <label htmlFor="endDate" className="text-sm text-gray-600">
+            <label htmlFor="endDate" className="text-sm text-gray-300">
               End:
             </label>
             <input
@@ -200,7 +184,7 @@ export default function AnalyticsPage() {
               type="date"
               value={dateRange.endDate}
               onChange={(e) => handleDateChange("endDate", e.target.value)}
-              className="px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+              className="px-2 py-1 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm bg-gray-800 text-white"
             />
           </div>
 
@@ -209,7 +193,7 @@ export default function AnalyticsPage() {
             onChange={(e) =>
               setInterval(e.target.value as "day" | "week" | "month")
             }
-            className="px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 text-sm"
+            className="px-2 py-1 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm bg-gray-800 text-white"
           >
             <option value="day">Daily</option>
             <option value="week">Weekly</option>
@@ -223,86 +207,111 @@ export default function AnalyticsPage() {
         onValueChange={handleTabChange}
         className="space-y-8"
       >
-        <TabsList className="bg-gray-100">
-          <TabsTrigger value="revenue">Revenue</TabsTrigger>
-          <TabsTrigger value="bookings">Bookings</TabsTrigger>
-          <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="traffic">Traffic</TabsTrigger>
+        <TabsList className="bg-gray-800 border border-gray-700">
+          <TabsTrigger
+            value="revenue"
+            className="data-[state=active]:bg-purple-600 data-[state=active]:text-white"
+          >
+            Revenue
+          </TabsTrigger>
+          <TabsTrigger
+            value="bookings"
+            className="data-[state=active]:bg-purple-600 data-[state=active]:text-white"
+          >
+            Bookings
+          </TabsTrigger>
+          <TabsTrigger
+            value="users"
+            className="data-[state=active]:bg-purple-600 data-[state=active]:text-white"
+          >
+            Users
+          </TabsTrigger>
+          <TabsTrigger
+            value="traffic"
+            className="data-[state=active]:bg-purple-600 data-[state=active]:text-white"
+          >
+            Traffic
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="revenue" className="space-y-6">
           {loading ? (
             <div className="flex justify-center p-8">
-              <div className="w-10 h-10 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin"></div>
+              <div className="w-10 h-10 border-4 border-gray-700 border-t-purple-600 rounded-full animate-spin"></div>
             </div>
           ) : revenueData ? (
             <>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card>
+                <Card className="bg-gray-800 border-gray-700">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-gray-500 font-medium">
+                    <CardTitle className="text-sm text-gray-400 font-medium">
                       Total Revenue
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {getValueWithTrend(revenueData.total, revenueData.change)}
+                    <div className="text-3xl font-bold text-white">
+                      {revenueData?.currency || "$"}
+                      {revenueData?.total?.toLocaleString() || "0"}
+                    </div>
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="bg-gray-800 border-gray-700">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-gray-500 font-medium">
+                    <CardTitle className="text-sm text-gray-400 font-medium">
                       Average Revenue
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold">
-                      ${revenueData.average.toLocaleString()}
+                    <div className="text-3xl font-bold text-white">
+                      {revenueData?.currency || "$"}
+                      {revenueData?.averagePerBooking?.toLocaleString() || "0"}
                     </div>
                   </CardContent>
                 </Card>
               </div>
 
-              <Card>
+              <Card className="bg-gray-800 border-gray-700">
                 <CardHeader>
-                  <CardTitle>Revenue Timeline</CardTitle>
+                  <CardTitle className="text-white">Revenue Timeline</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="h-80 flex items-center justify-center">
-                    {revenueData.timeline.labels.length > 0 ? (
+                    {revenueData?.timeline &&
+                    revenueData.timeline.length > 0 ? (
                       <div className="w-full">
                         <div className="flex flex-col space-y-2">
-                          {revenueData.timeline.labels.map((label, index) => (
-                            <div key={label} className="flex items-center">
-                              <div className="w-24 text-sm text-gray-500">
-                                {label}
+                          {revenueData.timeline.map((item) => (
+                            <div key={item.date} className="flex items-center">
+                              <div className="w-24 text-sm text-gray-400">
+                                {item.date}
                               </div>
-                              <div className="flex-1 h-8 bg-gray-100 rounded-md overflow-hidden">
+                              <div className="flex-1 h-8 bg-gray-700 rounded-md overflow-hidden">
                                 <div
-                                  className="h-full bg-indigo-500"
+                                  className="h-full bg-purple-600"
                                   style={{
                                     width: `${
-                                      (revenueData.timeline.data[index] /
+                                      (item.amount /
                                         Math.max(
-                                          ...revenueData.timeline.data
+                                          ...revenueData.timeline.map(
+                                            (i) => i.amount
+                                          )
                                         )) *
                                       100
                                     }%`,
                                   }}
                                 ></div>
                               </div>
-                              <div className="w-24 text-sm text-gray-700 text-right">
-                                $
-                                {revenueData.timeline.data[
-                                  index
-                                ].toLocaleString()}
+                              <div className="w-24 text-sm text-gray-300 text-right">
+                                {revenueData.currency || "$"}
+                                {item.amount.toLocaleString()}
                               </div>
                             </div>
                           ))}
                         </div>
                       </div>
                     ) : (
-                      <p className="text-gray-500">
+                      <p className="text-gray-400">
                         No revenue timeline data available
                       </p>
                     )}
@@ -310,52 +319,45 @@ export default function AnalyticsPage() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="bg-gray-800 border-gray-700">
                 <CardHeader>
-                  <CardTitle>Revenue by Vehicle Type</CardTitle>
+                  <CardTitle className="text-white">
+                    Revenue by Vehicle Type
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="h-80 flex items-center justify-center">
-                    {revenueData.byVehicleType.labels.length > 0 ? (
+                    {revenueData?.byVehicleType &&
+                    revenueData.byVehicleType.length > 0 ? (
                       <div className="w-full">
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                           <div className="space-y-4">
-                            {revenueData.byVehicleType.labels.map(
-                              (label, index) => (
-                                <div key={label} className="space-y-1">
-                                  <div className="flex justify-between text-sm">
-                                    <span className="font-medium">{label}</span>
-                                    <span>
-                                      $
-                                      {revenueData.byVehicleType.data[
-                                        index
-                                      ].toLocaleString()}
-                                    </span>
-                                  </div>
-                                  <div className="w-full bg-gray-200 rounded-full h-2">
-                                    <div
-                                      className="bg-indigo-600 h-2 rounded-full"
-                                      style={{
-                                        width: `${
-                                          (revenueData.byVehicleType.data[
-                                            index
-                                          ] /
-                                            Math.max(
-                                              ...revenueData.byVehicleType.data
-                                            )) *
-                                          100
-                                        }%`,
-                                      }}
-                                    ></div>
-                                  </div>
+                            {revenueData.byVehicleType.map((item) => (
+                              <div key={item.type} className="space-y-1">
+                                <div className="flex justify-between text-sm">
+                                  <span className="font-medium text-gray-300">
+                                    {item.type}
+                                  </span>
+                                  <span className="text-gray-300">
+                                    {revenueData.currency || "$"}
+                                    {item.amount.toLocaleString()}
+                                  </span>
                                 </div>
-                              )
-                            )}
+                                <div className="w-full bg-gray-700 rounded-full h-2">
+                                  <div
+                                    className="bg-purple-600 h-2 rounded-full"
+                                    style={{
+                                      width: `${item.percentage}%`,
+                                    }}
+                                  ></div>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
                       </div>
                     ) : (
-                      <p className="text-gray-500">
+                      <p className="text-gray-400">
                         No vehicle revenue data available
                       </p>
                     )}
@@ -365,7 +367,7 @@ export default function AnalyticsPage() {
             </>
           ) : (
             <div className="text-center p-8">
-              <p className="text-lg text-gray-600 mb-4">
+              <p className="text-lg text-gray-400 mb-4">
                 No revenue data available
               </p>
             </div>
@@ -375,60 +377,67 @@ export default function AnalyticsPage() {
         <TabsContent value="bookings" className="space-y-6">
           {loading ? (
             <div className="flex justify-center p-8">
-              <div className="w-10 h-10 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin"></div>
+              <div className="w-10 h-10 border-4 border-gray-700 border-t-purple-600 rounded-full animate-spin"></div>
             </div>
           ) : bookingData ? (
             <>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card>
+                <Card className="bg-gray-800 border-gray-700">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-gray-500 font-medium">
+                    <CardTitle className="text-sm text-gray-400 font-medium">
                       Total Bookings
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {getValueWithTrend(bookingData.total, bookingData.change)}
+                    <div className="text-3xl font-bold text-white">
+                      {bookingData?.total || 0}
+                    </div>
                   </CardContent>
                 </Card>
               </div>
 
-              <Card>
+              <Card className="bg-gray-800 border-gray-700">
                 <CardHeader>
-                  <CardTitle>Bookings Timeline</CardTitle>
+                  <CardTitle className="text-white">
+                    Bookings Timeline
+                  </CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="h-80 flex items-center justify-center">
-                    {bookingData.timeline.labels.length > 0 ? (
+                    {bookingData?.timeline &&
+                    bookingData.timeline.length > 0 ? (
                       <div className="w-full">
                         <div className="flex flex-col space-y-2">
-                          {bookingData.timeline.labels.map((label, index) => (
-                            <div key={label} className="flex items-center">
-                              <div className="w-24 text-sm text-gray-500">
-                                {label}
+                          {bookingData.timeline.map((item) => (
+                            <div key={item.date} className="flex items-center">
+                              <div className="w-24 text-sm text-gray-400">
+                                {item.date}
                               </div>
-                              <div className="flex-1 h-8 bg-gray-100 rounded-md overflow-hidden">
+                              <div className="flex-1 h-8 bg-gray-700 rounded-md overflow-hidden">
                                 <div
-                                  className="h-full bg-indigo-500"
+                                  className="h-full bg-purple-600"
                                   style={{
                                     width: `${
-                                      (bookingData.timeline.data[index] /
+                                      (item.count /
                                         Math.max(
-                                          ...bookingData.timeline.data
+                                          ...bookingData.timeline.map(
+                                            (i) => i.count
+                                          )
                                         )) *
                                       100
                                     }%`,
                                   }}
                                 ></div>
                               </div>
-                              <div className="w-16 text-sm text-gray-700 text-right">
-                                {bookingData.timeline.data[index]}
+                              <div className="w-16 text-sm text-gray-300 text-right">
+                                {item.count}
                               </div>
                             </div>
                           ))}
                         </div>
                       </div>
                     ) : (
-                      <p className="text-gray-500">
+                      <p className="text-gray-400">
                         No bookings timeline data available
                       </p>
                     )}
@@ -437,32 +446,37 @@ export default function AnalyticsPage() {
               </Card>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card>
+                <Card className="bg-gray-800 border-gray-700">
                   <CardHeader>
-                    <CardTitle>Bookings by Status</CardTitle>
+                    <CardTitle className="text-white">
+                      Bookings by Status
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="h-60 flex items-center justify-center">
-                      {bookingData.byStatus.labels.length > 0 ? (
+                      {bookingData?.byWeekday &&
+                      bookingData.byWeekday.length > 0 ? (
                         <div className="w-full space-y-4">
-                          {bookingData.byStatus.labels.map((label, index) => (
-                            <div key={label} className="space-y-1">
+                          {bookingData.byWeekday.map((item) => (
+                            <div key={item.day} className="space-y-1">
                               <div className="flex justify-between text-sm">
-                                <span className="font-medium capitalize">
-                                  {label}
+                                <span className="font-medium capitalize text-gray-300">
+                                  {item.day}
                                 </span>
-                                <span>{bookingData.byStatus.data[index]}</span>
+                                <span className="text-gray-300">
+                                  {item.count}
+                                </span>
                               </div>
-                              <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div className="w-full bg-gray-700 rounded-full h-2">
                                 <div
-                                  className={`h-2 rounded-full ${getStatusColor(
-                                    label
-                                  )}`}
+                                  className="h-2 rounded-full bg-purple-600"
                                   style={{
                                     width: `${
-                                      (bookingData.byStatus.data[index] /
+                                      (item.count /
                                         Math.max(
-                                          ...bookingData.byStatus.data
+                                          ...bookingData.byWeekday.map(
+                                            (i) => i.count
+                                          )
                                         )) *
                                       100
                                     }%`,
@@ -473,51 +487,56 @@ export default function AnalyticsPage() {
                           ))}
                         </div>
                       ) : (
-                        <p className="text-gray-500">
-                          No booking status data available
+                        <p className="text-gray-400">
+                          No booking data by day available
                         </p>
                       )}
                     </div>
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="bg-gray-800 border-gray-700">
                   <CardHeader>
-                    <CardTitle>Bookings by Vehicle Type</CardTitle>
+                    <CardTitle className="text-white">
+                      Bookings by Vehicle Type
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="h-60 flex items-center justify-center">
-                      {bookingData.byVehicleType.labels.length > 0 ? (
+                      {bookingData?.byVehicleType &&
+                      bookingData.byVehicleType.length > 0 ? (
                         <div className="w-full space-y-4">
-                          {bookingData.byVehicleType.labels.map(
-                            (label, index) => (
-                              <div key={label} className="space-y-1">
-                                <div className="flex justify-between text-sm">
-                                  <span className="font-medium">{label}</span>
-                                  <span>
-                                    {bookingData.byVehicleType.data[index]}
-                                  </span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                  <div
-                                    className="bg-indigo-600 h-2 rounded-full"
-                                    style={{
-                                      width: `${
-                                        (bookingData.byVehicleType.data[index] /
-                                          Math.max(
-                                            ...bookingData.byVehicleType.data
-                                          )) *
-                                        100
-                                      }%`,
-                                    }}
-                                  ></div>
-                                </div>
+                          {bookingData.byVehicleType.map((item) => (
+                            <div key={item.type} className="space-y-1">
+                              <div className="flex justify-between text-sm">
+                                <span className="font-medium text-gray-300">
+                                  {item.type}
+                                </span>
+                                <span className="text-gray-300">
+                                  {item.count}
+                                </span>
                               </div>
-                            )
-                          )}
+                              <div className="w-full bg-gray-700 rounded-full h-2">
+                                <div
+                                  className="bg-purple-600 h-2 rounded-full"
+                                  style={{
+                                    width: `${
+                                      (item.count /
+                                        Math.max(
+                                          ...bookingData.byVehicleType.map(
+                                            (i) => i.count
+                                          )
+                                        )) *
+                                      100
+                                    }%`,
+                                  }}
+                                ></div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       ) : (
-                        <p className="text-gray-500">
+                        <p className="text-gray-400">
                           No vehicle booking data available
                         </p>
                       )}
@@ -528,7 +547,7 @@ export default function AnalyticsPage() {
             </>
           ) : (
             <div className="text-center p-8">
-              <p className="text-lg text-gray-600 mb-4">
+              <p className="text-lg text-gray-400 mb-4">
                 No booking data available
               </p>
             </div>
@@ -538,82 +557,90 @@ export default function AnalyticsPage() {
         <TabsContent value="users" className="space-y-6">
           {loading ? (
             <div className="flex justify-center p-8">
-              <div className="w-10 h-10 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin"></div>
+              <div className="w-10 h-10 border-4 border-gray-700 border-t-purple-600 rounded-full animate-spin"></div>
             </div>
           ) : userData ? (
             <>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card>
+                <Card className="bg-gray-800 border-gray-700">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-gray-500 font-medium">
+                    <CardTitle className="text-sm text-gray-400 font-medium">
                       Total Users
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {getValueWithTrend(userData.total, userData.change)}
+                    <div className="text-3xl font-bold text-white">
+                      {userData?.total || 0}
+                    </div>
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="bg-gray-800 border-gray-700">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-gray-500 font-medium">
+                    <CardTitle className="text-sm text-gray-400 font-medium">
                       Active Users
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold">{userData.active}</div>
+                    <div className="text-3xl font-bold text-white">
+                      {userData?.active || 0}
+                    </div>
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="bg-gray-800 border-gray-700">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-gray-500 font-medium">
+                    <CardTitle className="text-sm text-gray-400 font-medium">
                       Returning Users
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold">
-                      {userData.returning}
+                    <div className="text-3xl font-bold text-white">
+                      {userData?.retention?.returning || 0}
                     </div>
                   </CardContent>
                 </Card>
               </div>
 
-              <Card>
+              <Card className="bg-gray-800 border-gray-700">
                 <CardHeader>
-                  <CardTitle>User Growth</CardTitle>
+                  <CardTitle className="text-white">User Growth</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="h-80 flex items-center justify-center">
-                    {userData.timeline.labels.length > 0 ? (
+                    {userData?.timeline && userData.timeline.length > 0 ? (
                       <div className="w-full">
                         <div className="flex flex-col space-y-2">
-                          {userData.timeline.labels.map((label, index) => (
-                            <div key={label} className="flex items-center">
-                              <div className="w-24 text-sm text-gray-500">
-                                {label}
+                          {userData.timeline.map((item) => (
+                            <div key={item.date} className="flex items-center">
+                              <div className="w-24 text-sm text-gray-400">
+                                {item.date}
                               </div>
-                              <div className="flex-1 h-8 bg-gray-100 rounded-md overflow-hidden">
+                              <div className="flex-1 h-8 bg-gray-700 rounded-md overflow-hidden">
                                 <div
-                                  className="h-full bg-indigo-500"
+                                  className="h-full bg-purple-600"
                                   style={{
                                     width: `${
-                                      (userData.timeline.data[index] /
-                                        Math.max(...userData.timeline.data)) *
+                                      (item.newUsers /
+                                        Math.max(
+                                          ...userData.timeline.map(
+                                            (i) => i.newUsers
+                                          )
+                                        )) *
                                       100
                                     }%`,
                                   }}
                                 ></div>
                               </div>
-                              <div className="w-16 text-sm text-gray-700 text-right">
-                                {userData.timeline.data[index]}
+                              <div className="w-16 text-sm text-gray-300 text-right">
+                                {item.newUsers}
                               </div>
                             </div>
                           ))}
                         </div>
                       </div>
                     ) : (
-                      <p className="text-gray-500">
+                      <p className="text-gray-400">
                         No user growth data available
                       </p>
                     )}
@@ -621,9 +648,9 @@ export default function AnalyticsPage() {
                 </CardContent>
               </Card>
 
-              <Card>
+              <Card className="bg-gray-800 border-gray-700">
                 <CardHeader>
-                  <CardTitle>Top Users</CardTitle>
+                  <CardTitle className="text-white">Top Users</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="overflow-x-auto">
@@ -637,20 +664,20 @@ export default function AnalyticsPage() {
                             Bookings
                           </th>
                           <th className="px-4 py-2 text-left font-medium text-gray-500">
-                            Revenue
+                            Spent
                           </th>
                         </tr>
                       </thead>
                       <tbody>
-                        {userData.topUsers.map((user) => (
+                        {userData?.topBookers?.map((user) => (
                           <tr
                             key={user.uid}
-                            className="border-b hover:bg-gray-50"
+                            className="border-b hover:bg-gray-700"
                           >
-                            <td className="px-4 py-3">{user.name}</td>
+                            <td className="px-4 py-3">{user.email}</td>
                             <td className="px-4 py-3">{user.bookings}</td>
                             <td className="px-4 py-3">
-                              ${user.revenue.toLocaleString()}
+                              ${user.spent.toLocaleString()}
                             </td>
                           </tr>
                         ))}
@@ -662,7 +689,7 @@ export default function AnalyticsPage() {
             </>
           ) : (
             <div className="text-center p-8">
-              <p className="text-lg text-gray-600 mb-4">
+              <p className="text-lg text-gray-400 mb-4">
                 No user data available
               </p>
             </div>
@@ -672,46 +699,53 @@ export default function AnalyticsPage() {
         <TabsContent value="traffic" className="space-y-6">
           {loading ? (
             <div className="flex justify-center p-8">
-              <div className="w-10 h-10 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin"></div>
+              <div className="w-10 h-10 border-4 border-gray-700 border-t-purple-600 rounded-full animate-spin"></div>
             </div>
           ) : trafficData ? (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card>
+                <Card className="bg-gray-800 border-gray-700">
                   <CardHeader>
-                    <CardTitle>Traffic Sources</CardTitle>
+                    <CardTitle className="text-white">
+                      Traffic Sources
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="h-60 flex items-center justify-center">
-                      {trafficData.sources && trafficData.sources.length > 0 ? (
+                      {trafficData?.referrers &&
+                      trafficData.referrers.length > 0 ? (
                         <div className="w-full space-y-4">
-                          {trafficData.sources.map(
-                            (source: {
-                              source: string;
-                              count: number;
-                              percentage: number;
-                            }) => (
-                              <div key={source.source} className="space-y-1">
-                                <div className="flex justify-between text-sm">
-                                  <span className="font-medium">
-                                    {source.source}
-                                  </span>
-                                  <span>
-                                    {source.count} ({source.percentage}%)
-                                  </span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                  <div
-                                    className="bg-indigo-600 h-2 rounded-full"
-                                    style={{ width: `${source.percentage}%` }}
-                                  ></div>
-                                </div>
+                          {trafficData.referrers.map((item) => (
+                            <div key={item.source} className="space-y-1">
+                              <div className="flex justify-between text-sm">
+                                <span className="font-medium text-gray-300">
+                                  {item.source}
+                                </span>
+                                <span className="text-gray-300">
+                                  {item.visits}
+                                </span>
                               </div>
-                            )
-                          )}
+                              <div className="w-full bg-gray-700 rounded-full h-2">
+                                <div
+                                  className="bg-purple-600 h-2 rounded-full"
+                                  style={{
+                                    width: `${
+                                      (item.visits /
+                                        Math.max(
+                                          ...trafficData.referrers.map(
+                                            (i) => i.visits
+                                          )
+                                        )) *
+                                      100
+                                    }%`,
+                                  }}
+                                ></div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       ) : (
-                        <p className="text-gray-500">
+                        <p className="text-gray-400">
                           No traffic source data available
                         </p>
                       )}
@@ -719,41 +753,38 @@ export default function AnalyticsPage() {
                   </CardContent>
                 </Card>
 
-                <Card>
+                <Card className="bg-gray-800 border-gray-700">
                   <CardHeader>
-                    <CardTitle>Device Breakdown</CardTitle>
+                    <CardTitle className="text-white">
+                      Device Breakdown
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="h-60 flex items-center justify-center">
-                      {trafficData.devices && trafficData.devices.length > 0 ? (
+                      {trafficData?.devices &&
+                      trafficData.devices.length > 0 ? (
                         <div className="w-full space-y-4">
-                          {trafficData.devices.map(
-                            (device: {
-                              device: string;
-                              count: number;
-                              percentage: number;
-                            }) => (
-                              <div key={device.device} className="space-y-1">
-                                <div className="flex justify-between text-sm">
-                                  <span className="font-medium">
-                                    {device.device}
-                                  </span>
-                                  <span>
-                                    {device.count} ({device.percentage}%)
-                                  </span>
-                                </div>
-                                <div className="w-full bg-gray-200 rounded-full h-2">
-                                  <div
-                                    className="bg-indigo-600 h-2 rounded-full"
-                                    style={{ width: `${device.percentage}%` }}
-                                  ></div>
-                                </div>
+                          {trafficData.devices.map((device) => (
+                            <div key={device.type} className="space-y-1">
+                              <div className="flex justify-between text-sm">
+                                <span className="font-medium text-gray-300">
+                                  {device.type}
+                                </span>
+                                <span className="text-gray-300">
+                                  {device.percentage}%
+                                </span>
                               </div>
-                            )
-                          )}
+                              <div className="w-full bg-gray-700 rounded-full h-2">
+                                <div
+                                  className="bg-purple-600 h-2 rounded-full"
+                                  style={{ width: `${device.percentage}%` }}
+                                ></div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       ) : (
-                        <p className="text-gray-500">
+                        <p className="text-gray-400">
                           No device data available
                         </p>
                       )}
@@ -762,46 +793,46 @@ export default function AnalyticsPage() {
                 </Card>
               </div>
 
-              <Card>
+              <Card className="bg-gray-800 border-gray-700">
                 <CardHeader>
-                  <CardTitle>Traffic Timeline</CardTitle>
+                  <CardTitle className="text-white">Traffic Timeline</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="h-80 flex items-center justify-center">
-                    {trafficData.timeline &&
-                    trafficData.timeline.labels.length > 0 ? (
+                    {trafficData?.timeline &&
+                    trafficData.timeline.length > 0 ? (
                       <div className="w-full">
                         <div className="flex flex-col space-y-2">
-                          {trafficData.timeline.labels.map(
-                            (label: string, index: number) => (
-                              <div key={label} className="flex items-center">
-                                <div className="w-24 text-sm text-gray-500">
-                                  {label}
-                                </div>
-                                <div className="flex-1 h-8 bg-gray-100 rounded-md overflow-hidden">
-                                  <div
-                                    className="h-full bg-indigo-500"
-                                    style={{
-                                      width: `${
-                                        (trafficData.timeline.data[index] /
-                                          Math.max(
-                                            ...trafficData.timeline.data
-                                          )) *
-                                        100
-                                      }%`,
-                                    }}
-                                  ></div>
-                                </div>
-                                <div className="w-16 text-sm text-gray-700 text-right">
-                                  {trafficData.timeline.data[index]}
-                                </div>
+                          {trafficData.timeline.map((item) => (
+                            <div key={item.date} className="flex items-center">
+                              <div className="w-24 text-sm text-gray-400">
+                                {item.date}
                               </div>
-                            )
-                          )}
+                              <div className="flex-1 h-8 bg-gray-700 rounded-md overflow-hidden">
+                                <div
+                                  className="h-full bg-purple-600"
+                                  style={{
+                                    width: `${
+                                      (item.visitors /
+                                        Math.max(
+                                          ...trafficData.timeline.map(
+                                            (i) => i.visitors
+                                          )
+                                        )) *
+                                      100
+                                    }%`,
+                                  }}
+                                ></div>
+                              </div>
+                              <div className="w-16 text-sm text-gray-300 text-right">
+                                {item.visitors}
+                              </div>
+                            </div>
+                          ))}
                         </div>
                       </div>
                     ) : (
-                      <p className="text-gray-500">
+                      <p className="text-gray-400">
                         No traffic timeline data available
                       </p>
                     )}
@@ -811,7 +842,7 @@ export default function AnalyticsPage() {
             </>
           ) : (
             <div className="text-center p-8">
-              <p className="text-lg text-gray-600 mb-4">
+              <p className="text-lg text-gray-400 mb-4">
                 No traffic data available
               </p>
             </div>
@@ -820,21 +851,4 @@ export default function AnalyticsPage() {
       </Tabs>
     </div>
   );
-}
-
-function getStatusColor(status: string): string {
-  switch (status.toLowerCase()) {
-    case "pending":
-      return "bg-yellow-500";
-    case "confirmed":
-      return "bg-blue-500";
-    case "in-progress":
-      return "bg-indigo-500";
-    case "completed":
-      return "bg-green-500";
-    case "cancelled":
-      return "bg-red-500";
-    default:
-      return "bg-gray-500";
-  }
 }

@@ -1,6 +1,5 @@
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import { FaBars } from "react-icons/fa";
+import { FaBars, FaUserCircle, FaBell } from "react-icons/fa";
 import { useState, useEffect } from "react";
 import { authAPI } from "@/lib/api";
 import { useRouter } from "next/navigation";
@@ -11,88 +10,131 @@ export function Navbar() {
   const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
 
-  // Fetch user data
+  // Fetch user data from localStorage and verify with backend
   useEffect(() => {
-    const fetchUserData = async () => {
+    const getUserInfo = async () => {
       try {
-        const response = await authAPI.verifyToken();
-        if (response.success && response.data?.user) {
-          setUser(response.data.user);
+        // First try to get from localStorage for quick UI rendering
+        const userInfoStr = localStorage.getItem("userInfo");
+        let userInfo = null;
+
+        if (userInfoStr) {
+          try {
+            userInfo = JSON.parse(userInfoStr);
+            // Create a User object from the localStorage data for initial state
+            const userData: User = {
+              uid: userInfo.uid,
+              email: userInfo.email,
+              displayName: userInfo.displayName,
+              role: userInfo.role as "admin" | "user",
+            };
+            setUser(userData);
+          } catch (e) {
+            console.error("Error parsing cached user info:", e);
+          }
         }
-      } catch {
-        console.error("Failed to fetch user data");
+
+        // Then verify with backend (source of truth)
+        const response = await authAPI.checkAdminStatus();
+
+        if (response.success && response.data) {
+          // Update with verified data from backend
+          setUser(response.data);
+          // Update localStorage with latest data
+          localStorage.setItem("userInfo", JSON.stringify(response.data));
+        } else {
+          // If backend check fails, remove local data and redirect to login
+          localStorage.removeItem("userInfo");
+          router.push("/auth/signin");
+        }
+      } catch (error) {
+        console.error("Error getting user info:", error);
+        localStorage.removeItem("userInfo");
       }
     };
 
-    fetchUserData();
-  }, []);
+    getUserInfo();
+  }, [router]);
 
   const handleSignOut = async () => {
     try {
       await authAPI.logout();
+      setUser(null);
       router.push("/auth/signin");
     } catch {
       console.error("Error signing out");
+      // Still clear local state and redirect
+      setUser(null);
+      localStorage.removeItem("userInfo");
+      router.push("/auth/signin");
     }
   };
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-gray-800/50 bg-gray-900/50 backdrop-blur supports-[backdrop-filter]:bg-gray-900/50">
-      <div className="container flex h-14 items-center">
-        <Link
-          href="/dashboard"
-          className="flex items-center gap-2 mr-6"
-          onClick={() => setMobileMenuOpen(false)}
-        >
-          <span className="text-xl font-bold text-white">X</span>
-          <span className="hidden md:inline-block text-white">Xequtive</span>
-        </Link>
-
-        <div className="flex-1 flex items-center justify-between">
-          <nav className="flex items-center space-x-6 text-sm font-medium">
-            {/* Navigation items */}
-          </nav>
-
-          {/* Desktop view */}
-          <div className="hidden md:flex items-center gap-4">
-            <span className="text-sm text-gray-400">{user?.email}</span>
-            <Button
-              variant="ghost"
-              className="text-gray-400 hover:text-white"
-              onClick={handleSignOut}
-            >
-              Sign Out
-            </Button>
-          </div>
-
-          {/* Mobile menu button */}
+    <header className="sticky top-0 z-40 w-full border-b border-gray-800 bg-gray-900 h-16">
+      <div className="h-full px-4 flex items-center justify-between">
+        {/* Left side - Mobile menu toggle */}
+        <div className="md:hidden">
           <Button
             variant="ghost"
-            className="md:hidden"
+            size="icon"
+            className="text-gray-400 hover:text-white"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             <FaBars className="h-5 w-5" />
           </Button>
         </div>
-      </div>
 
-      {/* Mobile menu */}
-      {mobileMenuOpen && (
-        <div className="md:hidden border-t border-gray-800/50">
-          <div className="container py-4 space-y-4">
-            <div className="flex flex-col gap-2">
-              <span className="text-sm text-gray-400">{user?.email}</span>
-              <Button
-                variant="ghost"
-                className="text-gray-400 hover:text-white justify-start"
-                onClick={handleSignOut}
-              >
-                Sign Out
-              </Button>
-            </div>
+        {/* Page title - can be dynamic */}
+        <div className="hidden md:block">
+          <h1 className="text-xl font-semibold text-white">Dashboard</h1>
+        </div>
+
+        {/* Right side - user profile */}
+        <div className="flex items-center gap-4">
+          {/* Notification icon */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="text-gray-400 hover:text-white"
+          >
+            <FaBell className="h-5 w-5" />
+          </Button>
+
+          {/* User dropdown */}
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="flex items-center gap-2 text-gray-300 hover:text-white"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            >
+              <FaUserCircle className="h-6 w-6" />
+              <span className="hidden md:inline-block">
+                {user?.displayName || user?.email || "User"}
+              </span>
+            </Button>
+
+            {/* Dropdown menu */}
+            {mobileMenuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-48 rounded-md border border-gray-800 bg-gray-900 py-1 shadow-lg">
+                <div className="px-4 py-2 text-sm text-gray-400 border-b border-gray-800">
+                  Signed in as
+                  <br />
+                  <span className="font-medium text-white">{user?.email}</span>
+                </div>
+                <Button
+                  variant="ghost"
+                  className="w-full justify-start px-4 py-2 text-sm text-gray-400 hover:text-white hover:bg-gray-800"
+                  onClick={handleSignOut}
+                >
+                  Sign Out
+                </Button>
+              </div>
+            )}
           </div>
         </div>
-      )}
+      </div>
     </header>
   );
 }

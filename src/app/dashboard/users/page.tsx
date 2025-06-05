@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { usersAPI } from "@/lib/api";
 import { User } from "@/types/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,48 +10,57 @@ export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [role, setRole] = useState<string | undefined>(undefined);
+  const [searchQuery, setSearchQuery] = useState("");
   const [pagination, setPagination] = useState({
     total: 0,
     pages: 0,
     currentPage: 1,
-    limit: 10,
+    limit: 20,
   });
-  const [searchQuery, setSearchQuery] = useState("");
-  const [role, setRole] = useState<string | undefined>(undefined);
 
-  const fetchUsers = async (params?: {
-    page?: number;
-    role?: string;
-    query?: string;
-  }) => {
-    setLoading(true);
-    setError(null);
+  const fetchUsers = useCallback(
+    async (params?: { page?: number; role?: string; query?: string }) => {
+      setLoading(true);
+      setError(null);
 
-    try {
-      const response = await usersAPI.getAll({
-        page: params?.page || pagination.currentPage,
-        limit: pagination.limit,
-        role: params?.role || role,
-        query: params?.query || searchQuery,
-      });
+      try {
+        const response = await usersAPI.getAll({
+          page: params?.page || pagination.currentPage,
+          limit: pagination.limit,
+          role: params?.role || role,
+          query: params?.query || searchQuery,
+        });
 
-      if (response.success && response.data) {
-        setUsers(response.data.users);
-        setPagination(response.data.pagination);
-      } else {
-        setError(response.error?.message || "Failed to load users");
+        if (response.success && response.data) {
+          setUsers(response.data.users || []);
+          const pagination = response.data.pagination;
+          if (pagination) {
+            setPagination((prev) => ({
+              ...prev,
+              total: pagination.total || 0,
+              pages: pagination.pages || 0,
+            }));
+          }
+        } else {
+          setError(response.error?.message || "Failed to load users");
+        }
+      } catch {
+        setError("An error occurred while fetching users");
+      } finally {
+        setLoading(false);
       }
-    } catch (err) {
-      setError("An error occurred while fetching users");
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    },
+    [pagination.currentPage, pagination.limit, role, searchQuery]
+  );
 
   useEffect(() => {
-    fetchUsers();
-  }, [pagination.currentPage, role]);
+    fetchUsers({
+      page: pagination?.currentPage,
+      role: role || undefined,
+      query: searchQuery || undefined,
+    });
+  }, [pagination?.currentPage, role, searchQuery, fetchUsers]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -113,7 +122,10 @@ export default function UsersPage() {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Users</h1>
-          <p className="text-gray-600">Manage and view all users</p>
+          <p className="text-gray-600">
+            Manage and view all users. This dashboard allows you to search for
+            users, filter by role, and view detailed user information.
+          </p>
         </div>
       </div>
 
@@ -172,7 +184,7 @@ export default function UsersPage() {
         <div className="flex justify-center p-8">
           <div className="w-10 h-10 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin"></div>
         </div>
-      ) : users.length > 0 ? (
+      ) : users && users.length > 0 ? (
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {users.map((user) => (
@@ -229,7 +241,7 @@ export default function UsersPage() {
           </div>
 
           {/* Pagination */}
-          {pagination.pages > 1 && (
+          {pagination && pagination.pages > 1 && (
             <div className="flex justify-center mt-6 gap-2">
               {Array.from({ length: pagination.pages }, (_, i) => i + 1).map(
                 (page) => (

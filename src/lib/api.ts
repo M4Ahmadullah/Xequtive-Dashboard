@@ -19,15 +19,7 @@ const api = axios.create({
   headers: {
     "Content-Type": "application/json",
   },
-});
-
-// Add interceptor to include auth token in requests if available
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem("adminToken");
-  if (token && config.headers) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
+  withCredentials: true, // Include credentials for cookie-based auth
 });
 
 // Add response interceptor to handle authentication errors
@@ -40,8 +32,9 @@ api.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       // If we're in the browser, redirect to login
       if (typeof window !== "undefined") {
-        localStorage.removeItem("adminToken");
-        window.location.href = "/auth/signin";
+        // Remove user info from localStorage
+        localStorage.removeItem("userInfo");
+        window.location.href = "/auth/signin?session=expired";
       }
     }
     return Promise.reject(error);
@@ -77,13 +70,35 @@ export const authAPI = {
     password: string
   ): Promise<ApiResponse<AuthResponse>> => {
     try {
-      const response = await api.post("/auth/login", { email, password });
+      const response = await api.post("/api/dashboard/auth/login", {
+        email,
+        password,
+      });
 
-      if (response.data && response.data.token) {
-        localStorage.setItem("adminToken", response.data.token);
+      // Get the actual data from the response
+      const responseData = response.data;
+
+      // Extract the actual auth data
+      const authData = responseData.data || responseData;
+
+      // Verify the user has admin role
+      if (authData?.role === "admin") {
+        // Store user info in localStorage for UI purposes only
+        localStorage.setItem(
+          "userInfo",
+          JSON.stringify({
+            uid: authData.uid,
+            email: authData.email,
+            displayName: authData.displayName,
+            role: authData.role,
+          })
+        );
       }
 
-      return { success: true, data: response.data };
+      return {
+        success: true,
+        data: authData,
+      };
     } catch (error) {
       return handleApiError(error);
     }
@@ -91,9 +106,20 @@ export const authAPI = {
 
   logout: async (): Promise<ApiResponse<void>> => {
     try {
-      await api.post("/auth/logout");
-      localStorage.removeItem("adminToken");
+      await api.post("/api/dashboard/auth/logout");
+      localStorage.removeItem("userInfo");
       return { success: true };
+    } catch (error) {
+      // Still clear localStorage even if API call fails
+      localStorage.removeItem("userInfo");
+      return handleApiError(error);
+    }
+  },
+
+  checkAdminStatus: async (): Promise<ApiResponse<User>> => {
+    try {
+      const response = await api.get("/api/dashboard/auth/check-admin");
+      return { success: true, data: response.data?.data || response.data };
     } catch (error) {
       return handleApiError(error);
     }
@@ -106,20 +132,8 @@ export const authAPI = {
     confirmPassword: string;
   }): Promise<ApiResponse<User>> => {
     try {
-      const response = await api.post("/auth/signup", adminData);
-      return { success: true, data: response.data };
-    } catch (error) {
-      return handleApiError(error);
-    }
-  },
-
-  verifyToken: async (): Promise<
-    ApiResponse<{ authenticated: boolean; user: User }>
-  > => {
-    try {
-      const token = localStorage.getItem("adminToken");
-      const response = await api.post("/auth/verify", { token });
-      return { success: true, data: response.data };
+      const response = await api.post("/api/dashboard/auth/signup", adminData);
+      return { success: true, data: response.data?.data || response.data };
     } catch (error) {
       return handleApiError(error);
     }
@@ -142,7 +156,7 @@ export const bookingsAPI = {
     }>
   > => {
     try {
-      const response = await api.get("/bookings", { params });
+      const response = await api.get("/api/dashboard/bookings", { params });
       return { success: true, data: response.data };
     } catch (error) {
       return handleApiError(error);
@@ -155,18 +169,25 @@ export const bookingsAPI = {
     status?: string
   ): Promise<ApiResponse<{ events: BookingCalendarEvent[] }>> => {
     try {
-      const response = await api.get("/bookings/calendar", {
-        params: { startDate, endDate, status },
-      });
-      return { success: true, data: response.data };
+      let url = `/api/dashboard/bookings/calendar?startDate=${startDate}&endDate=${endDate}`;
+      if (status) {
+        url += `&status=${status}`;
+      }
+
+      const response = await api.get(url);
+      return {
+        success: true,
+        data: response.data?.data || response.data,
+      };
     } catch (error) {
+      console.error("Error fetching calendar events:", error);
       return handleApiError(error);
     }
   },
 
   getById: async (id: string): Promise<ApiResponse<BookingDetail>> => {
     try {
-      const response = await api.get(`/bookings/${id}`);
+      const response = await api.get(`/api/dashboard/bookings/${id}`);
       return { success: true, data: response.data };
     } catch (error) {
       return handleApiError(error);
@@ -180,7 +201,7 @@ export const bookingsAPI = {
     ApiResponse<{ id: string; message: string; updatedFields: string[] }>
   > => {
     try {
-      const response = await api.put(`/bookings/${id}`, data);
+      const response = await api.put(`/api/dashboard/bookings/${id}`, data);
       return { success: true, data: response.data };
     } catch (error) {
       return handleApiError(error);
@@ -191,7 +212,7 @@ export const bookingsAPI = {
     id: string
   ): Promise<ApiResponse<{ message: string; id: string }>> => {
     try {
-      const response = await api.delete(`/bookings/${id}`);
+      const response = await api.delete(`/api/dashboard/bookings/${id}`);
       return { success: true, data: response.data };
     } catch (error) {
       return handleApiError(error);
@@ -218,7 +239,7 @@ export const usersAPI = {
     }>
   > => {
     try {
-      const response = await api.get("/users", { params });
+      const response = await api.get("/api/dashboard/users", { params });
       return { success: true, data: response.data };
     } catch (error) {
       return handleApiError(error);
@@ -234,7 +255,7 @@ export const usersAPI = {
     }>
   > => {
     try {
-      const response = await api.get(`/users/${uid}`);
+      const response = await api.get(`/api/dashboard/users/${uid}`);
       return { success: true, data: response.data };
     } catch (error) {
       return handleApiError(error);
@@ -248,7 +269,7 @@ export const usersAPI = {
     ApiResponse<{ uid: string; message: string; updatedFields: string[] }>
   > => {
     try {
-      const response = await api.put(`/users/${uid}`, data);
+      const response = await api.put(`/api/dashboard/users/${uid}`, data);
       return { success: true, data: response.data };
     } catch (error) {
       return handleApiError(error);
@@ -259,7 +280,7 @@ export const usersAPI = {
     uid: string
   ): Promise<ApiResponse<{ message: string; uid: string }>> => {
     try {
-      const response = await api.post(`/users/${uid}/disable`);
+      const response = await api.post(`/api/dashboard/users/${uid}/disable`);
       return { success: true, data: response.data };
     } catch (error) {
       return handleApiError(error);
@@ -273,7 +294,9 @@ export const analyticsAPI = {
     period: string = "week"
   ): Promise<ApiResponse<AnalyticsOverview>> => {
     try {
-      const response = await api.get(`/analytics/overview?period=${period}`);
+      const response = await api.get(
+        `/api/dashboard/analytics/overview?period=${period}`
+      );
       return { success: true, data: response.data };
     } catch (error) {
       return handleApiError(error);
@@ -286,7 +309,9 @@ export const analyticsAPI = {
     interval?: "day" | "week" | "month";
   }): Promise<ApiResponse<RevenueAnalytics>> => {
     try {
-      const response = await api.get("/analytics/revenue", { params });
+      const response = await api.get("/api/dashboard/analytics/revenue", {
+        params,
+      });
       return { success: true, data: response.data };
     } catch (error) {
       return handleApiError(error);
@@ -299,7 +324,9 @@ export const analyticsAPI = {
     interval?: "day" | "week" | "month";
   }): Promise<ApiResponse<BookingAnalytics>> => {
     try {
-      const response = await api.get("/analytics/bookings", { params });
+      const response = await api.get("/api/dashboard/analytics/bookings", {
+        params,
+      });
       return { success: true, data: response.data };
     } catch (error) {
       return handleApiError(error);
@@ -312,7 +339,9 @@ export const analyticsAPI = {
     interval?: "day" | "week" | "month";
   }): Promise<ApiResponse<UserAnalytics>> => {
     try {
-      const response = await api.get("/analytics/users", { params });
+      const response = await api.get("/api/dashboard/analytics/users", {
+        params,
+      });
       return { success: true, data: response.data };
     } catch (error) {
       return handleApiError(error);
@@ -333,7 +362,9 @@ export const analyticsAPI = {
     }>
   > => {
     try {
-      const response = await api.get("/analytics/traffic", { params });
+      const response = await api.get("/api/dashboard/analytics/traffic", {
+        params,
+      });
       return { success: true, data: response.data };
     } catch (error) {
       return handleApiError(error);
@@ -345,7 +376,7 @@ export const analyticsAPI = {
 export const settingsAPI = {
   getSettings: async (): Promise<ApiResponse<SystemSettings>> => {
     try {
-      const response = await api.get("/settings");
+      const response = await api.get("/api/dashboard/settings");
       return { success: true, data: response.data };
     } catch (error) {
       return handleApiError(error);
@@ -356,7 +387,7 @@ export const settingsAPI = {
     data: Partial<SystemSettings>
   ): Promise<ApiResponse<{ message: string; updatedFields: string[] }>> => {
     try {
-      const response = await api.put("/settings", data);
+      const response = await api.put("/api/dashboard/settings", data);
       return { success: true, data: response.data };
     } catch (error) {
       return handleApiError(error);
@@ -387,7 +418,7 @@ export const settingsAPI = {
     }>
   > => {
     try {
-      const response = await api.get("/logs", { params });
+      const response = await api.get("/api/dashboard/logs", { params });
       return { success: true, data: response.data };
     } catch (error) {
       return handleApiError(error);

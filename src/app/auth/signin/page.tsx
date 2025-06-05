@@ -21,13 +21,22 @@ export default function SignInPage() {
 
     try {
       const result = await authAPI.login(email, password);
-      if (result.success) {
-        router.push("/dashboard");
+
+      if (result.success && result.data) {
+        // Verify that user has admin role
+        if (result.data.role === "admin") {
+          // Redirect to dashboard
+          router.push("/dashboard");
+        } else {
+          setError("Access denied. Only admin users can access the dashboard.");
+          localStorage.removeItem("userInfo");
+        }
       } else {
         setError(result.error?.message || "Invalid email or password");
       }
     } catch {
       setError("Invalid email or password");
+      console.error("Login failed");
     } finally {
       setLoading(false);
     }
@@ -79,7 +88,7 @@ export default function SignInPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="peer w-full rounded-xl border-2 border-gray-800 bg-gray-900/50 px-4 py-2.5 text-white placeholder-transparent transition-all duration-300 focus:border-purple-500 focus:outline-none focus:ring-0 [&:-webkit-autofill]:bg-gray-900/50 [&:-webkit-autofill]:text-white [&:-webkit-autofill]:shadow-[0_0_0_30px_rgb(17,24,39,0.5)_inset] [&:-webkit-autofill]:[text-fill-color:rgb(255,255,255)]"
+                className="peer w-full rounded-xl border-2 border-gray-800 bg-gray-900/50 px-4 py-2.5 text-white placeholder-transparent transition-all duration-300 focus:border-purple-500 focus:outline-none focus:ring-0 [&:-webkit-autofill]:!bg-[#111827] [&:-webkit-autofill]:!text-white [&:-webkit-autofill]:![box-shadow:0_0_0_30px_#111827_inset] [&:-webkit-autofill]:[text-fill-color:white]"
                 placeholder="Email Address"
                 required
               />
@@ -97,7 +106,7 @@ export default function SignInPage() {
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="peer w-full rounded-xl border-2 border-gray-800 bg-gray-900/50 px-4 py-2.5 text-white placeholder-transparent transition-all duration-300 focus:border-purple-500 focus:outline-none focus:ring-0 [&:-webkit-autofill]:bg-gray-900/50 [&:-webkit-autofill]:text-white [&:-webkit-autofill]:shadow-[0_0_0_30px_rgb(17,24,39,0.5)_inset] [&:-webkit-autofill]:[text-fill-color:rgb(255,255,255)]"
+                className="peer w-full rounded-xl border-2 border-gray-800 bg-gray-900/50 px-4 py-2.5 text-white placeholder-transparent transition-all duration-300 focus:border-purple-500 focus:outline-none focus:ring-0 [&:-webkit-autofill]:!bg-[#111827] [&:-webkit-autofill]:!text-white [&:-webkit-autofill]:![box-shadow:0_0_0_30px_#111827_inset] [&:-webkit-autofill]:[text-fill-color:white]"
                 placeholder="Password"
                 required
               />

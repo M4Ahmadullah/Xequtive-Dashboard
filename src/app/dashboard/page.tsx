@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { analyticsAPI, authAPI } from "@/lib/api";
+import { analyticsAPI } from "@/lib/api";
 import { AnalyticsOverview, User } from "@/types/api";
 import Link from "next/link";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -16,18 +16,26 @@ export default function DashboardPage() {
 
   // Fetch user data
   useEffect(() => {
-    const fetchUserData = async () => {
+    const getUserInfo = () => {
       try {
-        const response = await authAPI.verifyToken();
-        if (response.success && response.data?.user) {
-          setUser(response.data.user);
+        const userInfoStr = localStorage.getItem("userInfo");
+        if (userInfoStr) {
+          const userInfo = JSON.parse(userInfoStr);
+          // Create a User object from the localStorage data
+          const userData: User = {
+            uid: userInfo.uid,
+            email: userInfo.email,
+            displayName: userInfo.displayName,
+            role: userInfo.role as "admin" | "user",
+          };
+          setUser(userData);
         }
-      } catch {
-        console.error("Failed to fetch user data");
+      } catch (error) {
+        console.error("Error getting user info:", error);
       }
     };
 
-    fetchUserData();
+    getUserInfo();
   }, []);
 
   useEffect(() => {
@@ -63,7 +71,7 @@ export default function DashboardPage() {
           isPositive
             ? "text-green-500"
             : isNeutral
-            ? "text-gray-500"
+            ? "text-gray-400"
             : "text-red-500"
         }`}
       >
@@ -90,20 +98,20 @@ export default function DashboardPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="w-12 h-12 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin"></div>
+      <div className="flex items-center justify-center h-full">
+        <div className="w-12 h-12 border-4 border-gray-700 border-t-purple-600 rounded-full animate-spin"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4 w-full max-w-3xl">
+      <div className="flex flex-col items-center justify-center h-full p-4">
+        <div className="bg-red-900/20 border-l-4 border-red-500 p-4 mb-4 w-full max-w-3xl text-red-300">
           <div className="flex">
             <div className="flex-shrink-0">
               <svg
-                className="h-5 w-5 text-red-400"
+                className="h-5 w-5 text-red-500"
                 viewBox="0 0 20 20"
                 fill="currentColor"
               >
@@ -115,13 +123,13 @@ export default function DashboardPage() {
               </svg>
             </div>
             <div className="ml-3">
-              <p className="text-sm text-red-700">{error}</p>
+              <p className="text-sm">{error}</p>
             </div>
           </div>
         </div>
         <button
           onClick={() => window.location.reload()}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+          className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
         >
           Retry
         </button>
@@ -131,11 +139,11 @@ export default function DashboardPage() {
 
   if (!overview) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <p className="text-lg text-gray-600 mb-4">No data available</p>
+      <div className="flex flex-col items-center justify-center h-full p-4">
+        <p className="text-lg text-gray-400 mb-4">No data available</p>
         <button
           onClick={() => window.location.reload()}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+          className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
         >
           Refresh
         </button>
@@ -144,17 +152,19 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="w-full">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-600">Welcome back, {user?.email || "User"}</p>
+          <h1 className="text-3xl font-bold text-white">Dashboard</h1>
+          <p className="text-gray-400">
+            Welcome back, {user?.displayName || user?.email || "User"}
+          </p>
         </div>
         <div className="flex items-center space-x-4">
           <select
             value={period}
             onChange={(e) => setPeriod(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="px-3 py-2 bg-gray-800 border border-gray-700 text-white rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
           >
             <option value="day">Today</option>
             <option value="week">This Week</option>
@@ -166,125 +176,191 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
         {/* Total Bookings */}
-        <Card>
+        <Card className="bg-gray-800 border-gray-700 shadow-md">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-gray-500 font-medium">
+            <CardTitle className="text-sm text-gray-400 font-medium">
               Total Bookings
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex justify-between items-end">
-              <div className="text-3xl font-bold">{overview.totalBookings}</div>
-              {renderIndicator(overview.totalBookingsChange)}
+              <div className="text-3xl font-bold text-white">
+                {overview?.bookings?.total || 0}
+              </div>
+              {renderIndicator(overview?.bookings?.comparisonPercentage || 0)}
             </div>
           </CardContent>
         </Card>
 
         {/* Revenue */}
-        <Card>
+        <Card className="bg-gray-800 border-gray-700 shadow-md">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-gray-500 font-medium">
+            <CardTitle className="text-sm text-gray-400 font-medium">
               Revenue
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex justify-between items-end">
-              <div className="text-3xl font-bold">
-                ${overview.totalRevenue.toLocaleString()}
+              <div className="text-3xl font-bold text-white">
+                {overview?.revenue?.currency || "$"}
+                {overview?.revenue?.total
+                  ? overview.revenue.total.toLocaleString()
+                  : "0"}
               </div>
-              {renderIndicator(overview.totalRevenueChange)}
+              {renderIndicator(overview?.revenue?.comparisonPercentage || 0)}
             </div>
           </CardContent>
         </Card>
 
         {/* Total Users */}
-        <Card>
+        <Card className="bg-gray-800 border-gray-700 shadow-md">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-gray-500 font-medium">
+            <CardTitle className="text-sm text-gray-400 font-medium">
               Total Users
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex justify-between items-end">
-              <div className="text-3xl font-bold">{overview.totalUsers}</div>
-              {renderIndicator(overview.totalUsersChange)}
+              <div className="text-3xl font-bold text-white">
+                {overview?.users?.total || 0}
+              </div>
+              {renderIndicator(overview?.users?.comparisonPercentage || 0)}
             </div>
           </CardContent>
         </Card>
 
         {/* Most Booked Vehicle */}
-        <Card>
+        <Card className="bg-gray-800 border-gray-700 shadow-md">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm text-gray-500 font-medium">
+            <CardTitle className="text-sm text-gray-400 font-medium">
               Most Booked Vehicle
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex justify-between items-end">
-              <div className="text-3xl font-bold">
-                {overview.mostBookedVehicle.type}
+              <div className="text-3xl font-bold text-white">
+                {overview?.vehicles?.mostBooked || "None"}
               </div>
-              <div className="text-sm text-gray-500">
-                {overview.mostBookedVehicle.count} bookings
-              </div>
+              <div className="text-sm text-gray-400">Most popular</div>
             </div>
           </CardContent>
         </Card>
       </div>
 
       <Tabs defaultValue="bookings" className="space-y-6">
-        <TabsList className="bg-gray-100">
-          <TabsTrigger value="bookings">Bookings</TabsTrigger>
-          <TabsTrigger value="revenue">Revenue</TabsTrigger>
-          <TabsTrigger value="users">Users</TabsTrigger>
-          <TabsTrigger value="vehicles">Vehicles</TabsTrigger>
+        <TabsList className="bg-gray-800 border border-gray-700">
+          <TabsTrigger
+            value="bookings"
+            className="data-[state=active]:bg-purple-600 data-[state=active]:text-white"
+          >
+            Bookings
+          </TabsTrigger>
+          <TabsTrigger
+            value="revenue"
+            className="data-[state=active]:bg-purple-600 data-[state=active]:text-white"
+          >
+            Revenue
+          </TabsTrigger>
+          <TabsTrigger
+            value="users"
+            className="data-[state=active]:bg-purple-600 data-[state=active]:text-white"
+          >
+            Users
+          </TabsTrigger>
+          <TabsTrigger
+            value="vehicles"
+            className="data-[state=active]:bg-purple-600 data-[state=active]:text-white"
+          >
+            Vehicles
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="bookings" className="space-y-6">
-          <Card>
+          <Card className="bg-gray-800 border-gray-700 shadow-md">
             <CardHeader>
-              <CardTitle>Booking Distribution</CardTitle>
+              <CardTitle className="text-white">Booking Distribution</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-80 flex items-center justify-center">
-                {overview.bookingDistribution.labels.length > 0 ? (
+              <div className="h-80 flex items-center justify-center text-white">
+                {overview?.bookings && (
                   <div className="w-full grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
-                      <h3 className="text-lg font-medium mb-2">
+                      <h3 className="text-lg font-medium mb-2 text-white">
                         Status Distribution
                       </h3>
                       <div className="space-y-2">
-                        {overview.bookingDistribution.labels.map(
-                          (label, index) => (
-                            <div key={label} className="flex items-center">
-                              <div
-                                className="w-3 h-3 rounded-full mr-2"
-                                style={{
-                                  backgroundColor: getStatusColor(label),
-                                }}
-                              ></div>
-                              <div className="flex-1 flex justify-between">
-                                <span className="capitalize">{label}</span>
-                                <span className="font-medium">
-                                  {overview.bookingDistribution.data[index]}
-                                </span>
-                              </div>
-                            </div>
-                          )
-                        )}
+                        <div className="flex items-center">
+                          <div
+                            className="w-3 h-3 rounded-full mr-2"
+                            style={{
+                              backgroundColor: getStatusColor("pending"),
+                            }}
+                          ></div>
+                          <div className="flex-1 flex justify-between">
+                            <span className="capitalize">Pending</span>
+                            <span className="font-medium">
+                              {overview.bookings.pending || 0}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center">
+                          <div
+                            className="w-3 h-3 rounded-full mr-2"
+                            style={{
+                              backgroundColor: getStatusColor("confirmed"),
+                            }}
+                          ></div>
+                          <div className="flex-1 flex justify-between">
+                            <span className="capitalize">Confirmed</span>
+                            <span className="font-medium">
+                              {overview.bookings.confirmed || 0}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center">
+                          <div
+                            className="w-3 h-3 rounded-full mr-2"
+                            style={{
+                              backgroundColor: getStatusColor("completed"),
+                            }}
+                          ></div>
+                          <div className="flex-1 flex justify-between">
+                            <span className="capitalize">Completed</span>
+                            <span className="font-medium">
+                              {overview.bookings.completed || 0}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="flex items-center">
+                          <div
+                            className="w-3 h-3 rounded-full mr-2"
+                            style={{
+                              backgroundColor: getStatusColor("cancelled"),
+                            }}
+                          ></div>
+                          <div className="flex-1 flex justify-between">
+                            <span className="capitalize">Cancelled</span>
+                            <span className="font-medium">
+                              {overview.bookings.cancelled || 0}
+                            </span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                     <div>
-                      <h3 className="text-lg font-medium mb-2">View Details</h3>
+                      <h3 className="text-lg font-medium mb-2 text-white">
+                        View Details
+                      </h3>
                       <Link
                         href="/dashboard/bookings"
-                        className="inline-block px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                        className="inline-block px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
                       >
                         View All Bookings
                       </Link>
                     </div>
                   </div>
-                ) : (
+                )}
+                {!overview?.bookings && (
                   <p className="text-gray-500">No booking data available</p>
                 )}
               </div>
@@ -293,12 +369,12 @@ export default function DashboardPage() {
         </TabsContent>
 
         <TabsContent value="revenue" className="space-y-6">
-          <Card>
+          <Card className="bg-gray-800 border-gray-700 shadow-md">
             <CardHeader>
-              <CardTitle>Revenue Overview</CardTitle>
+              <CardTitle className="text-white">Revenue Overview</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-80 flex items-center justify-center">
+              <div className="h-80 flex items-center justify-center text-white">
                 <p className="text-gray-500">
                   Revenue details available in the full analytics dashboard
                 </p>
@@ -308,12 +384,12 @@ export default function DashboardPage() {
         </TabsContent>
 
         <TabsContent value="users" className="space-y-6">
-          <Card>
+          <Card className="bg-gray-800 border-gray-700 shadow-md">
             <CardHeader>
-              <CardTitle>User Activity</CardTitle>
+              <CardTitle className="text-white">User Activity</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="h-80 flex items-center justify-center">
+              <div className="h-80 flex items-center justify-center text-white">
                 <p className="text-gray-500">
                   User analytics available in the full analytics dashboard
                 </p>
@@ -323,33 +399,32 @@ export default function DashboardPage() {
         </TabsContent>
 
         <TabsContent value="vehicles" className="space-y-6">
-          <Card>
+          <Card className="bg-gray-800 border-gray-700 shadow-md">
             <CardHeader>
-              <CardTitle>Vehicle Distribution</CardTitle>
+              <CardTitle className="text-white">Vehicle Distribution</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="h-80">
-                {overview.vehicleDistribution.length > 0 ? (
+                {overview?.vehicles?.distribution &&
+                overview.vehicles.distribution.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="space-y-4">
-                      {overview.vehicleDistribution.map((item) => (
-                        <div key={item.type} className="flex items-center">
+                      {overview.vehicles.distribution.map((item) => (
+                        <div key={item.name} className="flex items-center">
                           <div
                             className="w-3 h-3 rounded-full mr-2"
                             style={{
-                              backgroundColor: getVehicleColor(item.type),
+                              backgroundColor: getVehicleColor(item.name),
                             }}
                           ></div>
                           <div className="flex-1">
                             <div className="flex justify-between mb-1">
-                              <span>{item.type}</span>
-                              <span>
-                                {item.count} ({item.percentage}%)
-                              </span>
+                              <span>{item.name}</span>
+                              <span>{item.percentage}%</span>
                             </div>
-                            <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div className="w-full bg-gray-700 rounded-full h-2">
                               <div
-                                className="bg-indigo-600 h-2 rounded-full"
+                                className="bg-purple-600 h-2 rounded-full"
                                 style={{ width: `${item.percentage}%` }}
                               ></div>
                             </div>
@@ -358,12 +433,11 @@ export default function DashboardPage() {
                       ))}
                     </div>
                     <div>
-                      <h3 className="text-lg font-medium mb-2">
-                        Most Popular: {overview.mostBookedVehicle.type}
+                      <h3 className="text-lg font-medium mb-2 text-white">
+                        Most Popular: {overview.vehicles.mostBooked || "None"}
                       </h3>
-                      <p className="text-gray-600 mb-4">
-                        This vehicle type has been booked{" "}
-                        {overview.mostBookedVehicle.count} times in the selected
+                      <p className="text-gray-400 mb-4">
+                        This vehicle type is the most booked in the selected
                         period.
                       </p>
                     </div>
@@ -383,25 +457,25 @@ export default function DashboardPage() {
 // Helper function to get colors for status
 function getStatusColor(status: string): string {
   const colors: Record<string, string> = {
-    pending: "#FFA500", // Orange
-    confirmed: "#4CAF50", // Green
-    "in-progress": "#2196F3", // Blue
-    completed: "#4CAF50", // Green
-    cancelled: "#F44336", // Red
+    pending: "#F59E0B", // Amber
+    confirmed: "#0EA5E9", // Sky
+    "in-progress": "#6366F1", // Indigo
+    completed: "#22C55E", // Green
+    cancelled: "#EF4444", // Red
   };
 
-  return colors[status.toLowerCase()] || "#9E9E9E"; // Default gray
+  return colors[status.toLowerCase()] || "#6B7280"; // Default gray
 }
 
 // Helper function to get colors for vehicle types
 function getVehicleColor(type: string): string {
   const colors: Record<string, string> = {
-    sedan: "#3F51B5", // Indigo
-    suv: "#673AB7", // Deep Purple
-    luxury: "#9C27B0", // Purple
-    sports: "#E91E63", // Pink
-    van: "#795548", // Brown
+    sedan: "#6366F1", // Indigo
+    suv: "#8B5CF6", // Purple
+    luxury: "#A855F7", // Purple/Violet
+    sports: "#EC4899", // Pink
+    van: "#9333EA", // Purple/Violet
   };
 
-  return colors[type.toLowerCase()] || "#607D8B"; // Default blue gray
+  return colors[type.toLowerCase()] || "#6B7280"; // Default gray
 }

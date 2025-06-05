@@ -5,6 +5,7 @@ import { settingsAPI } from "@/lib/api";
 import { SystemSettings } from "@/types/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "@/components/ui/button";
 
 export default function SettingsPage() {
   const [settings, setSettings] = useState<SystemSettings | null>(null);
@@ -21,7 +22,16 @@ export default function SettingsPage() {
   const [businessHoursEnd, setBusinessHoursEnd] = useState("");
   const [businessDays, setBusinessDays] = useState<string[]>([]);
   const [baseRate, setBaseRate] = useState(0);
-  const [currency, setCurrency] = useState("USD");
+  const [currency, setCurrency] = useState("GBP");
+
+  // Pricing settings
+  const [congestionCharge, setCongestionCharge] = useState(0);
+  const [dartfordCrossing, setDartfordCrossing] = useState(0);
+
+  // Service area settings
+  const [maxDistance, setMaxDistance] = useState(0);
+  const [excludedAreas, setExcludedAreas] = useState<string[]>([]);
+  const [includedIslands, setIncludedIslands] = useState<string[]>([]);
 
   // Notification settings
   const [emailNotifications, setEmailNotifications] = useState(false);
@@ -44,8 +54,23 @@ export default function SettingsPage() {
         setBusinessHoursStart(response.data.businessHours?.start || "");
         setBusinessHoursEnd(response.data.businessHours?.end || "");
         setBusinessDays(response.data.businessHours?.days || []);
+
+        // Pricing settings
         setBaseRate(response.data.pricing?.baseRate || 0);
-        setCurrency(response.data.pricing?.currency || "USD");
+        setCurrency(response.data.pricing?.currency || "GBP");
+        setCongestionCharge(
+          response.data.pricing?.extraFees?.congestionCharge || 0
+        );
+        setDartfordCrossing(
+          response.data.pricing?.extraFees?.dartfordCrossing || 0
+        );
+
+        // Service area settings
+        if (response.data.serviceAreas) {
+          setMaxDistance(response.data.serviceAreas.maxDistance || 350);
+          setExcludedAreas(response.data.serviceAreas.excludedAreas || []);
+          setIncludedIslands(response.data.serviceAreas.includedIslands || []);
+        }
 
         // Notification settings
         setEmailNotifications(response.data.notifications?.email || false);
@@ -83,7 +108,15 @@ export default function SettingsPage() {
       pricing: {
         baseRate,
         currency,
-        extraFees: settings?.pricing?.extraFees || {},
+        extraFees: {
+          congestionCharge,
+          dartfordCrossing,
+        },
+      },
+      serviceAreas: {
+        maxDistance,
+        excludedAreas,
+        includedIslands,
       },
       notifications: {
         email: emailNotifications,
@@ -118,20 +151,20 @@ export default function SettingsPage() {
 
   if (loading && !settings) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="w-12 h-12 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin"></div>
+      <div className="flex items-center justify-center h-full">
+        <div className="w-12 h-12 border-4 border-gray-700 border-t-purple-600 rounded-full animate-spin"></div>
       </div>
     );
   }
 
   if (error && !settings) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4 w-full max-w-3xl">
+      <div className="flex flex-col items-center justify-center h-full p-4">
+        <div className="bg-red-900/20 border-l-4 border-red-500 p-4 mb-4 w-full max-w-3xl text-red-300">
           <div className="flex">
             <div className="flex-shrink-0">
               <svg
-                className="h-5 w-5 text-red-400"
+                className="h-5 w-5 text-red-500"
                 viewBox="0 0 20 20"
                 fill="currentColor"
               >
@@ -143,37 +176,34 @@ export default function SettingsPage() {
               </svg>
             </div>
             <div className="ml-3">
-              <p className="text-sm text-red-700">{error}</p>
+              <p className="text-sm">{error}</p>
             </div>
           </div>
         </div>
-        <button
-          onClick={fetchSettings}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-        >
+        <Button onClick={fetchSettings} variant="default">
           Retry
-        </button>
+        </Button>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="w-full">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Settings</h1>
-          <p className="text-gray-600">
+          <h1 className="text-3xl font-bold text-white">Settings</h1>
+          <p className="text-gray-400">
             Configure system settings and preferences
           </p>
         </div>
       </div>
 
       {successMessage && (
-        <div className="bg-green-50 border-l-4 border-green-400 p-4 mb-6">
+        <div className="bg-green-900/30 border border-green-500 p-4 mb-6 text-green-300 rounded-lg animate-fade-in">
           <div className="flex">
             <div className="flex-shrink-0">
               <svg
-                className="h-5 w-5 text-green-400"
+                className="h-5 w-5 text-green-500"
                 viewBox="0 0 20 20"
                 fill="currentColor"
               >
@@ -185,18 +215,18 @@ export default function SettingsPage() {
               </svg>
             </div>
             <div className="ml-3">
-              <p className="text-sm text-green-700">{successMessage}</p>
+              <p className="text-sm">{successMessage}</p>
             </div>
           </div>
         </div>
       )}
 
       {error && (
-        <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-6">
+        <div className="bg-red-900/30 border border-red-500 p-4 mb-6 text-red-300 rounded-lg animate-fade-in">
           <div className="flex">
             <div className="flex-shrink-0">
               <svg
-                className="h-5 w-5 text-red-400"
+                className="h-5 w-5 text-red-500"
                 viewBox="0 0 20 20"
                 fill="currentColor"
               >
@@ -208,83 +238,99 @@ export default function SettingsPage() {
               </svg>
             </div>
             <div className="ml-3">
-              <p className="text-sm text-red-700">{error}</p>
+              <p className="text-sm">{error}</p>
             </div>
           </div>
         </div>
       )}
 
       <Tabs defaultValue="general" className="space-y-6">
-        <TabsList className="bg-gray-100">
-          <TabsTrigger value="general">General</TabsTrigger>
-          <TabsTrigger value="business">Business Hours</TabsTrigger>
-          <TabsTrigger value="pricing">Pricing</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
+        <TabsList className="bg-gray-900 border border-gray-700 p-1 rounded-lg">
+          <TabsTrigger
+            value="general"
+            className="data-[state=active]:bg-purple-600 data-[state=active]:text-white hover:text-purple-300 transition-colors rounded-md"
+          >
+            General
+          </TabsTrigger>
+          <TabsTrigger
+            value="pricing"
+            className="data-[state=active]:bg-purple-600 data-[state=active]:text-white hover:text-purple-300 transition-colors rounded-md"
+          >
+            Pricing
+          </TabsTrigger>
+          <TabsTrigger
+            value="serviceAreas"
+            className="data-[state=active]:bg-purple-600 data-[state=active]:text-white hover:text-purple-300 transition-colors rounded-md"
+          >
+            Service Areas
+          </TabsTrigger>
+          <TabsTrigger
+            value="notifications"
+            className="data-[state=active]:bg-purple-600 data-[state=active]:text-white hover:text-purple-300 transition-colors rounded-md"
+          >
+            Notifications
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="general" className="space-y-6">
-          <Card>
+          <Card className="bg-gray-900 border-gray-700 shadow-md">
             <CardHeader>
-              <CardTitle>Company Information</CardTitle>
+              <CardTitle className="text-white">Company Information</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div>
                   <label
                     htmlFor="companyName"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-sm font-medium text-gray-300 mb-1"
                   >
                     Company Name
                   </label>
                   <input
-                    id="companyName"
                     type="text"
+                    id="companyName"
                     value={companyName}
                     onChange={(e) => setCompanyName(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="px-3 py-2 bg-gray-800 border border-gray-600 text-white rounded-md w-full focus:outline-none focus:ring-2 focus:ring-purple-500 hover:border-gray-500 transition-colors"
                   />
                 </div>
-
                 <div>
                   <label
                     htmlFor="contactEmail"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-sm font-medium text-gray-300 mb-1"
                   >
                     Contact Email
                   </label>
                   <input
-                    id="contactEmail"
                     type="email"
+                    id="contactEmail"
                     value={contactEmail}
                     onChange={(e) => setContactEmail(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="px-3 py-2 bg-gray-800 border border-gray-600 text-white rounded-md w-full focus:outline-none focus:ring-2 focus:ring-purple-500 hover:border-gray-500 transition-colors"
                   />
                 </div>
-
                 <div>
                   <label
                     htmlFor="contactPhone"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="block text-sm font-medium text-gray-300 mb-1"
                   >
                     Contact Phone
                   </label>
                   <input
-                    id="contactPhone"
                     type="tel"
+                    id="contactPhone"
                     value={contactPhone}
                     onChange={(e) => setContactPhone(e.target.value)}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="px-3 py-2 bg-gray-800 border border-gray-600 text-white rounded-md w-full focus:outline-none focus:ring-2 focus:ring-purple-500 hover:border-gray-500 transition-colors"
                   />
                 </div>
               </div>
             </CardContent>
           </Card>
-        </TabsContent>
 
-        <TabsContent value="business" className="space-y-6">
-          <Card>
+          <Card className="bg-gray-900 border-gray-700 shadow-md">
             <CardHeader>
-              <CardTitle>Business Hours</CardTitle>
+              <CardTitle className="text-white">Business Hours</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
@@ -292,41 +338,39 @@ export default function SettingsPage() {
                   <div>
                     <label
                       htmlFor="businessHoursStart"
-                      className="block text-sm font-medium text-gray-700 mb-1"
+                      className="block text-sm font-medium text-gray-300 mb-1"
                     >
-                      Opening Time
+                      Start Time
                     </label>
                     <input
-                      id="businessHoursStart"
                       type="time"
+                      id="businessHoursStart"
                       value={businessHoursStart}
                       onChange={(e) => setBusinessHoursStart(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="px-3 py-2 bg-gray-800 border border-gray-600 text-white rounded-md w-full focus:outline-none focus:ring-2 focus:ring-purple-500 hover:border-gray-500 transition-colors"
                     />
                   </div>
-
                   <div>
                     <label
                       htmlFor="businessHoursEnd"
-                      className="block text-sm font-medium text-gray-700 mb-1"
+                      className="block text-sm font-medium text-gray-300 mb-1"
                     >
-                      Closing Time
+                      End Time
                     </label>
                     <input
-                      id="businessHoursEnd"
                       type="time"
+                      id="businessHoursEnd"
                       value={businessHoursEnd}
                       onChange={(e) => setBusinessHoursEnd(e.target.value)}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="px-3 py-2 bg-gray-800 border border-gray-600 text-white rounded-md w-full focus:outline-none focus:ring-2 focus:ring-purple-500 hover:border-gray-500 transition-colors"
                     />
                   </div>
                 </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-300 mb-2">
                     Business Days
                   </label>
-                  <div className="flex flex-wrap gap-2">
+                  <div className="flex flex-wrap gap-3">
                     {[
                       "Monday",
                       "Tuesday",
@@ -340,10 +384,10 @@ export default function SettingsPage() {
                         key={day}
                         type="button"
                         onClick={() => handleBusinessDayToggle(day)}
-                        className={`px-4 py-2 rounded-md ${
+                        className={`px-3 py-1 rounded-md text-sm transition-colors ${
                           businessDays.includes(day)
-                            ? "bg-indigo-600 text-white"
-                            : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                            ? "bg-purple-600 text-white hover:bg-purple-700"
+                            : "bg-gray-800 text-gray-300 border border-gray-600 hover:bg-gray-700 hover:border-gray-500"
                         }`}
                       >
                         {day}
@@ -357,40 +401,93 @@ export default function SettingsPage() {
         </TabsContent>
 
         <TabsContent value="pricing" className="space-y-6">
-          <Card>
+          <Card className="bg-gray-900 border-gray-700 shadow-md">
             <CardHeader>
-              <CardTitle>Pricing Settings</CardTitle>
+              <CardTitle className="text-white">Pricing Settings</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div>
-                  <label
-                    htmlFor="baseRate"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Base Rate
-                  </label>
-                  <div className="flex">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label
+                      htmlFor="baseRate"
+                      className="block text-sm font-medium text-gray-300 mb-1"
+                    >
+                      Base Rate
+                    </label>
                     <input
-                      id="baseRate"
                       type="number"
+                      id="baseRate"
+                      value={baseRate}
+                      onChange={(e) => setBaseRate(Number(e.target.value))}
                       min="0"
                       step="0.01"
-                      value={baseRate}
-                      onChange={(e) =>
-                        setBaseRate(parseFloat(e.target.value) || 0)
-                      }
-                      className="flex-1 px-4 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="px-3 py-2 bg-gray-800 border border-gray-600 text-white rounded-md w-full focus:outline-none focus:ring-2 focus:ring-purple-500 hover:border-gray-500 transition-colors"
                     />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="currency"
+                      className="block text-sm font-medium text-gray-300 mb-1"
+                    >
+                      Currency
+                    </label>
                     <select
+                      id="currency"
                       value={currency}
                       onChange={(e) => setCurrency(e.target.value)}
-                      className="w-20 px-2 py-2 border border-l-0 border-gray-300 rounded-r-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      className="px-3 py-2 bg-gray-800 border border-gray-600 text-white rounded-md w-full focus:outline-none focus:ring-2 focus:ring-purple-500 hover:border-gray-500 transition-colors"
                     >
-                      <option value="USD">USD</option>
-                      <option value="EUR">EUR</option>
-                      <option value="GBP">GBP</option>
+                      <option value="GBP">GBP (£)</option>
+                      <option value="USD">USD ($)</option>
+                      <option value="EUR">EUR (€)</option>
                     </select>
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <h3 className="text-lg font-medium text-white mb-3">
+                    Extra Fees
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label
+                        htmlFor="congestionCharge"
+                        className="block text-sm font-medium text-gray-300 mb-1"
+                      >
+                        Congestion Charge
+                      </label>
+                      <input
+                        type="number"
+                        id="congestionCharge"
+                        value={congestionCharge}
+                        onChange={(e) =>
+                          setCongestionCharge(Number(e.target.value))
+                        }
+                        min="0"
+                        step="0.01"
+                        className="px-3 py-2 bg-gray-800 border border-gray-600 text-white rounded-md w-full focus:outline-none focus:ring-2 focus:ring-purple-500 hover:border-gray-500 transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label
+                        htmlFor="dartfordCrossing"
+                        className="block text-sm font-medium text-gray-300 mb-1"
+                      >
+                        Dartford Crossing
+                      </label>
+                      <input
+                        type="number"
+                        id="dartfordCrossing"
+                        value={dartfordCrossing}
+                        onChange={(e) =>
+                          setDartfordCrossing(Number(e.target.value))
+                        }
+                        min="0"
+                        step="0.01"
+                        className="px-3 py-2 bg-gray-800 border border-gray-600 text-white rounded-md w-full focus:outline-none focus:ring-2 focus:ring-purple-500 hover:border-gray-500 transition-colors"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -398,56 +495,123 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="notifications" className="space-y-6">
-          <Card>
+        <TabsContent value="serviceAreas" className="space-y-6">
+          <Card className="bg-gray-900 border-gray-700 shadow-md">
             <CardHeader>
-              <CardTitle>Notification Settings</CardTitle>
+              <CardTitle className="text-white">Service Areas</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div>
+                  <label
+                    htmlFor="maxDistance"
+                    className="block text-sm font-medium text-gray-300 mb-1"
+                  >
+                    Maximum Service Distance (miles)
+                  </label>
+                  <input
+                    type="number"
+                    id="maxDistance"
+                    value={maxDistance}
+                    onChange={(e) => setMaxDistance(Number(e.target.value))}
+                    className="px-3 py-2 bg-gray-800 border border-gray-600 text-white rounded-md w-full focus:outline-none focus:ring-2 focus:ring-purple-500 hover:border-gray-500 transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="excludedAreas"
+                    className="block text-sm font-medium text-gray-300 mb-1"
+                  >
+                    Excluded Areas (comma separated)
+                  </label>
+                  <textarea
+                    id="excludedAreas"
+                    value={excludedAreas.join(", ")}
+                    onChange={(e) =>
+                      setExcludedAreas(
+                        e.target.value.split(",").map((area) => area.trim())
+                      )
+                    }
+                    rows={3}
+                    className="px-3 py-2 bg-gray-800 border border-gray-600 text-white rounded-md w-full focus:outline-none focus:ring-2 focus:ring-purple-500 hover:border-gray-500 transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="includedIslands"
+                    className="block text-sm font-medium text-gray-300 mb-1"
+                  >
+                    Included Islands (comma separated)
+                  </label>
+                  <textarea
+                    id="includedIslands"
+                    value={includedIslands.join(", ")}
+                    onChange={(e) =>
+                      setIncludedIslands(
+                        e.target.value.split(",").map((island) => island.trim())
+                      )
+                    }
+                    rows={3}
+                    className="px-3 py-2 bg-gray-800 border border-gray-600 text-white rounded-md w-full focus:outline-none focus:ring-2 focus:ring-purple-500 hover:border-gray-500 transition-colors"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="notifications" className="space-y-6">
+          <Card className="bg-gray-900 border-gray-700 shadow-md">
+            <CardHeader>
+              <CardTitle className="text-white">
+                Notification Settings
+              </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div className="flex items-center">
                   <input
-                    id="emailNotifications"
                     type="checkbox"
+                    id="emailNotifications"
                     checked={emailNotifications}
                     onChange={(e) => setEmailNotifications(e.target.checked)}
-                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-600 rounded bg-gray-800"
                   />
                   <label
                     htmlFor="emailNotifications"
-                    className="ml-2 block text-sm text-gray-900"
+                    className="ml-2 block text-sm text-gray-300"
                   >
                     Enable Email Notifications
                   </label>
                 </div>
-
                 <div className="flex items-center">
                   <input
-                    id="smsNotifications"
                     type="checkbox"
+                    id="smsNotifications"
                     checked={smsNotifications}
                     onChange={(e) => setSmsNotifications(e.target.checked)}
-                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-600 rounded bg-gray-800"
                   />
                   <label
                     htmlFor="smsNotifications"
-                    className="ml-2 block text-sm text-gray-900"
+                    className="ml-2 block text-sm text-gray-300"
                   >
                     Enable SMS Notifications
                   </label>
                 </div>
-
                 <div className="flex items-center">
                   <input
-                    id="pushNotifications"
                     type="checkbox"
+                    id="pushNotifications"
                     checked={pushNotifications}
                     onChange={(e) => setPushNotifications(e.target.checked)}
-                    className="h-4 w-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    className="h-4 w-4 text-purple-600 focus:ring-purple-500 border-gray-600 rounded bg-gray-800"
                   />
                   <label
                     htmlFor="pushNotifications"
-                    className="ml-2 block text-sm text-gray-900"
+                    className="ml-2 block text-sm text-gray-300"
                   >
                     Enable Push Notifications
                   </label>
@@ -458,21 +622,22 @@ export default function SettingsPage() {
         </TabsContent>
       </Tabs>
 
-      <div className="flex justify-end mt-8">
-        <button
+      <div className="mt-8 flex justify-end">
+        <Button
           onClick={saveSettings}
           disabled={saving}
-          className="px-6 py-3 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          variant="default"
+          className="w-full md:w-auto bg-purple-600 hover:bg-purple-700 text-white transition-colors disabled:opacity-50 disabled:hover:bg-purple-600"
         >
           {saving ? (
-            <div className="flex items-center">
-              <div className="w-5 h-5 border-2 border-white rounded-full border-t-transparent animate-spin mr-2"></div>
-              Saving...
+            <div className="flex items-center space-x-2">
+              <div className="w-4 h-4 border-2 border-gray-700 border-t-white rounded-full animate-spin"></div>
+              <span>Saving...</span>
             </div>
           ) : (
             "Save Settings"
           )}
-        </button>
+        </Button>
       </div>
     </div>
   );

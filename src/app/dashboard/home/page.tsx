@@ -34,6 +34,16 @@ export default function DashboardHomePage() {
       setLoading(true);
       setError(null);
 
+      function getLastMonth(): string {
+        const date = new Date();
+        date.setMonth(date.getMonth() - 1);
+        return formatDate(date);
+      }
+
+      function formatDate(date: Date): string {
+        return date.toISOString().split("T")[0];
+      }
+
       try {
         // Fetch summary stats
         const [bookingsResponse, usersResponse, analyticsResponse] =
@@ -89,7 +99,7 @@ export default function DashboardHomePage() {
             ...prev,
             revenue: {
               total: analyticsResponse.data?.total || 0,
-              trend: analyticsResponse.data?.change || 0,
+              trend: 0,
             },
           }));
         }
@@ -103,16 +113,6 @@ export default function DashboardHomePage() {
 
     fetchDashboardData();
   }, []);
-
-  function getLastMonth(): string {
-    const date = new Date();
-    date.setMonth(date.getMonth() - 1);
-    return formatDate(date);
-  }
-
-  function formatDate(date: Date): string {
-    return date.toISOString().split("T")[0];
-  }
 
   if (loading) {
     return (

@@ -11,8 +11,13 @@ export interface ApiResponse<T = unknown> {
 
 // Auth
 export interface AuthResponse {
+  uid: string;
+  email: string;
+  displayName: string;
+  phone: string | null;
+  role: "admin" | "user";
   token: string;
-  user: User;
+  expiresIn: string;
 }
 
 // User
@@ -30,21 +35,35 @@ export interface User {
 
 // Analytics
 export interface AnalyticsOverview {
-  totalBookings: number;
-  totalBookingsChange: number;
-  totalUsers: number;
-  totalUsersChange: number;
-  totalRevenue: number;
-  totalRevenueChange: number;
-  mostBookedVehicle: {
-    type: string;
+  bookings: {
+    total: number;
+    pending: number;
+    confirmed: number;
+    completed: number;
+    cancelled: number;
+    comparisonPercentage: number;
+  };
+  revenue: {
+    total: number;
+    currency: string;
+    comparisonPercentage: number;
+  };
+  users: {
+    total: number;
+    new: number;
+    comparisonPercentage: number;
+  };
+  vehicles: {
+    mostBooked: string;
+    distribution: {
+      name: string;
+      percentage: number;
+    }[];
+  };
+  popularRoutes: {
+    route: string;
     count: number;
-  };
-  bookingDistribution: {
-    labels: string[];
-    data: number[];
-  };
-  vehicleDistribution: VehicleDistributionItem[];
+  }[];
 }
 
 export interface VehicleDistributionItem {
@@ -55,58 +74,105 @@ export interface VehicleDistributionItem {
 
 export interface RevenueAnalytics {
   total: number;
-  change: number;
+  currency: string;
+  averagePerBooking: number;
   timeline: {
-    labels: string[];
-    data: number[];
-  };
-  average: number;
+    date: string;
+    amount: number;
+    bookings: number;
+  }[];
   byVehicleType: {
-    labels: string[];
-    data: number[];
-  };
+    type: string;
+    amount: number;
+    percentage: number;
+  }[];
+  byStatus: {
+    status: string;
+    amount: number;
+  }[];
 }
 
 export interface BookingAnalytics {
   total: number;
-  change: number;
+  completed: number;
+  cancelled: number;
   timeline: {
-    labels: string[];
-    data: number[];
-  };
-  byStatus: {
-    labels: string[];
-    data: number[];
-  };
+    date: string;
+    count: number;
+    completed: number;
+    cancelled: number;
+  }[];
+  byHour: {
+    hour: number;
+    count: number;
+  }[];
+  byWeekday: {
+    day: string;
+    count: number;
+  }[];
   byVehicleType: {
-    labels: string[];
-    data: number[];
-  };
+    type: string;
+    count: number;
+  }[];
+  cancellationReasons: {
+    reason: string;
+    count: number;
+  }[];
 }
 
 export interface UserAnalytics {
   total: number;
-  change: number;
-  timeline: {
-    labels: string[];
-    data: number[];
-  };
+  new: number;
   active: number;
-  returning: number;
-  topUsers: {
+  timeline: {
+    date: string;
+    newUsers: number;
+    totalBookings: number;
+  }[];
+  topBookers: {
     uid: string;
-    name: string;
+    email: string;
     bookings: number;
-    revenue: number;
+    spent: number;
+  }[];
+  retention: {
+    returning: number;
+    oneTime: number;
+  };
+  devices: {
+    device: string;
+    percentage: number;
   }[];
 }
 
 export interface TrafficAnalytics {
-  total: number;
-  change: number;
-  sources: { source: string; count: number; percentage: number }[];
-  timeline: { labels: string[]; data: number[] };
-  devices: { device: string; count: number; percentage: number }[];
+  visitors: {
+    total: number;
+    unique: number;
+    returning: number;
+  };
+  timeline: {
+    date: string;
+    visitors: number;
+    unique: number;
+  }[];
+  pages: {
+    path: string;
+    views: number;
+  }[];
+  referrers: {
+    source: string;
+    visits: number;
+  }[];
+  devices: {
+    type: string;
+    percentage: number;
+  }[];
+  locations: {
+    city: string;
+    visits: number;
+  }[];
+  conversionRate: number;
 }
 
 // Bookings
@@ -158,12 +224,12 @@ export interface BookingCalendarEvent {
   title: string;
   start: string;
   end: string;
-  status: "pending" | "confirmed" | "in-progress" | "completed" | "cancelled";
-  userId: string;
+  status: string;
   vehicle: {
     type?: string;
     model: string;
   };
+  userId: string;
 }
 
 // Locations
@@ -193,9 +259,12 @@ export interface SystemSettings {
     extraFees: Record<string, number>;
   };
   serviceAreas?: {
-    name: string;
-    coordinates: { lat: number; lng: number }[];
-  }[];
+    maxDistance?: number;
+    excludedAreas?: string[];
+    includedIslands?: string[];
+    name?: string;
+    coordinates?: { lat: number; lng: number }[];
+  };
   notifications?: {
     email: boolean;
     sms: boolean;
