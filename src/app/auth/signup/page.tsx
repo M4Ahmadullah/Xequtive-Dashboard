@@ -1,5 +1,50 @@
 "use client";
 
+// Signup page has been disabled - only hardcoded users are allowed
+export default function SignUpPage() {
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gray-950">
+      <div className="w-full max-w-md rounded-2xl border border-gray-800/50 bg-gray-900/50 p-8 backdrop-blur-sm text-center">
+        <div className="mb-8">
+          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-red-600/10">
+            <svg
+              className="h-8 w-8 text-red-500"
+              viewBox="0 0 24 24"
+              fill="none"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
+                fill="currentColor"
+              />
+            </svg>
+          </div>
+          <h1 className="text-3xl font-bold text-white">Signup Disabled</h1>
+          <p className="mt-2 text-gray-400">
+            User registration is not available. Only pre-authorized users can access the dashboard.
+          </p>
+        </div>
+        
+        <div className="space-y-4">
+          <div className="p-4 bg-gray-800/50 rounded-lg border border-gray-700">
+            <h3 className="text-lg font-medium text-white mb-2">Authorized Users</h3>
+            <div className="space-y-2 text-sm text-gray-300">
+              <p>• xequtivecars@gmail.com</p>
+              <p>• ahmadullahm4masoudy@gmail.com</p>
+            </div>
+          </div>
+          
+          <p className="text-sm text-gray-400">
+            Please contact the administrator if you need access to the dashboard.
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/*
+// Original signup code commented out below
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -97,7 +142,6 @@ export default function SignUpPage() {
 
         <form onSubmit={handleSubmit} className="space-y-8">
           <div className="space-y-4">
-            {/* Full Name field */}
             <div className="group relative">
               <input
                 id="fullName"
@@ -140,7 +184,7 @@ export default function SignUpPage() {
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="peer w-full rounded-xl border-2 border-gray-800 bg-gray-900/50 px-4 py-2.5 text-white placeholder-transparent transition-all duration-300 focus:border-purple-500 focus:outline-none focus:ring-0 [&:-webkit-autofill]:!bg-[#111827] [&:-webkit-autofill]:!text-white [&:-webkit-autofill]:![box-shadow:0_0_0_30px_#111827_inset] [&:-webkit-autofill]:[text-fill-color:white]"
+                className="peer w-full rounded-xl border-2 border-gray-800 bg-gray-900/50 px-4 py-2.5 text-white placeholder-transparent transition-all duration-300 focus:border-purple-500 focus:outline-none focus:ring-0 [&:-webkit-autofill]:!bg-[#111827] [&:-webkit-autofill]:!text-white [&:-webkit-autofill]:![box-shadow:0_0_0_30px_111827_inset] [&:-webkit-autofill]:[text-fill-color:white]"
                 placeholder="Password"
                 required
               />
@@ -161,11 +205,11 @@ export default function SignUpPage() {
 
             <div className="group relative">
               <input
-                id="confirm-password"
+                id="confirmPassword"
                 type={showConfirmPassword ? "text" : "password"}
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className="peer w-full rounded-xl border-2 border-gray-800 bg-gray-900/50 px-4 py-2.5 text-white placeholder-transparent transition-all duration-300 focus:border-purple-500 focus:outline-none focus:ring-0 [&:-webkit-autofill]:!bg-[#111827] [&:-webkit-autofill]:!text-white [&:-webkit-autofill]:![box-shadow:0_0_0_30px_#111827_inset] [&:-webkit-autofill]:[text-fill-color:white]"
+                className="peer w-full rounded-xl border-2 border-gray-800 bg-gray-900/50 px-4 py-2.5 text-white placeholder-transparent transition-all duration-300 focus:border-purple-500 focus:outline-none focus:ring-0 [&:-webkit-autofill]:!bg-[#111827] [&:-webkit-autofill]:!text-white [&:-webkit-autofill]:![box-shadow:0_0_0_30px_111827_inset] [&:-webkit-autofill]:[text-fill-color:white]"
                 placeholder="Confirm Password"
                 required
               />
@@ -174,14 +218,10 @@ export default function SignUpPage() {
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-300 focus:outline-none"
               >
-                {showConfirmPassword ? (
-                  <FaEyeSlash size={18} />
-                ) : (
-                  <FaEye size={18} />
-                )}
+                {showConfirmPassword ? <FaEyeSlash size={18} /> : <FaEye size={18} />}
               </button>
               <label
-                htmlFor="confirm-password"
+                htmlFor="confirmPassword"
                 className="absolute -top-2.5 left-4 bg-gray-900/50 px-1 text-sm text-gray-400 transition-all duration-300 peer-placeholder-shown:top-1/2 peer-placeholder-shown:-translate-y-1/2 peer-placeholder-shown:bg-transparent peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-500 peer-focus:-top-2.5 peer-focus:text-sm peer-focus:text-purple-400"
               >
                 Confirm Password
@@ -190,7 +230,7 @@ export default function SignUpPage() {
           </div>
 
           {error && (
-            <div className="rounded-xl border border-purple-900/50 bg-purple-900/30 p-4 text-sm text-purple-300">
+            <div className="rounded-xl border border-red-900/50 bg-red-900/30 p-4 text-sm text-red-300">
               {error}
             </div>
           )}
@@ -243,3 +283,4 @@ export default function SignUpPage() {
     </div>
   );
 }
+*/

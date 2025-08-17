@@ -9,8 +9,11 @@ import type {
   RevenueAnalytics,
   BookingAnalytics,
   UserAnalytics,
+  TrafficAnalytics,
   User,
   SystemSettings,
+  VehicleType,
+  SystemLog,
 } from "../types/api";
 
 // Create axios instance with base URL from environment variable
@@ -63,6 +66,15 @@ const handleApiError = (error: unknown): ApiResponse<never> => {
   };
 };
 
+// Helper function to extract data from backend response
+const extractData = <T>(response: { data?: { data?: T } | T }): T => {
+  // Backend returns data in response.data.data structure
+  if (response.data && typeof response.data === 'object' && 'data' in response.data) {
+    return response.data.data as T;
+  }
+  return response.data as T;
+};
+
 // Auth API Calls
 export const authAPI = {
   login: async (
@@ -70,73 +82,147 @@ export const authAPI = {
     password: string
   ): Promise<ApiResponse<AuthResponse>> => {
     try {
-      const response = await api.post("/api/dashboard/auth/login", {
-        email,
-        password,
+      // Use the new backend hardcoded login endpoint
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/auth/hardcoded-login`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include', // Important for cookies
+        body: JSON.stringify({ email, password }),
       });
 
-      // Get the actual data from the response
-      const responseData = response.data;
+      if (!response.ok) {
+        if (response.status === 401) {
+          return {
+            success: false,
+            error: {
+              message: "Invalid email or password",
+              code: "INVALID_CREDENTIALS",
+            },
+          };
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-      // Extract the actual auth data
-      const authData = responseData.data || responseData;
-
-      // Verify the user has admin role
-      if (authData?.role === "admin") {
+      const data = await response.json();
+      
+      if (data.success && data.data) {
         // Store user info in localStorage for UI purposes only
         localStorage.setItem(
           "userInfo",
           JSON.stringify({
-            uid: authData.uid,
-            email: authData.email,
-            displayName: authData.displayName,
-            role: authData.role,
+            uid: data.data.user.uid,
+            email: data.data.user.email,
+            displayName: data.data.user.displayName,
+            role: data.data.user.role,
           })
         );
+        
+        return {
+          success: true,
+          data: data.data.user,
+        };
+      } else {
+        return {
+          success: false,
+          error: {
+            message: data.error?.message || "Login failed",
+            code: data.error?.code || "LOGIN_FAILED",
+          },
+        };
       }
-
-      return {
-        success: true,
-        data: authData,
-      };
     } catch (error) {
-      return handleApiError(error);
+      console.error("Login error:", error);
+      return {
+        success: false,
+        error: {
+          message: "Network error. Please try again.",
+          code: "NETWORK_ERROR",
+        },
+      };
     }
   },
 
   logout: async (): Promise<ApiResponse<void>> => {
     try {
-      await api.post("/api/dashboard/auth/logout");
+      // Call backend logout endpoint to clear cookies
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/auth/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      
+      // Clear local storage
       localStorage.removeItem("userInfo");
       return { success: true };
     } catch (error) {
-      // Still clear localStorage even if API call fails
+      console.error("Logout error:", error);
+      // Still clear local storage even if backend call fails
       localStorage.removeItem("userInfo");
-      return handleApiError(error);
+      return { success: true };
     }
   },
 
   checkAdminStatus: async (): Promise<ApiResponse<User>> => {
     try {
-      const response = await api.get("/api/dashboard/auth/check-admin");
-      return { success: true, data: response.data?.data || response.data };
+      // Check with backend using cookies
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/auth/check-admin`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        if (response.status === 401) {
+          // Clear local storage if backend says not authenticated
+          localStorage.removeItem("userInfo");
+          return {
+            success: false,
+            error: {
+              message: "Authentication required",
+              code: "AUTHENTICATION_REQUIRED",
+            },
+          };
+        }
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      if (data.success && data.data) {
+        // Update localStorage with latest data from backend
+        localStorage.setItem("userInfo", JSON.stringify(data.data));
+        return { success: true, data: data.data };
+      } else {
+        localStorage.removeItem("userInfo");
+        return {
+          success: false,
+          error: {
+            message: data.error?.message || "Authentication check failed",
+            code: data.error?.code || "AUTH_CHECK_FAILED",
+          },
+        };
+      }
     } catch (error) {
-      return handleApiError(error);
+      console.error("Auth check error:", error);
+      localStorage.removeItem("userInfo");
+      return {
+        success: false,
+        error: {
+          message: "Network error during authentication check",
+          code: "NETWORK_ERROR",
+        },
+      };
     }
   },
 
-  createAdmin: async (adminData: {
-    email: string;
-    password: string;
-    fullName: string;
-    confirmPassword: string;
-  }): Promise<ApiResponse<User>> => {
-    try {
-      const response = await api.post("/api/dashboard/auth/signup", adminData);
-      return { success: true, data: response.data?.data || response.data };
-    } catch (error) {
-      return handleApiError(error);
-    }
+  createAdmin: async (): Promise<ApiResponse<User>> => {
+    // Admin creation is disabled for hardcoded users
+    return {
+      success: false,
+      error: {
+        message: "Admin creation is disabled. Only pre-authorized users can access the dashboard.",
+        code: "ADMIN_CREATION_DISABLED",
+      },
+    };
   },
 };
 
@@ -157,7 +243,8 @@ export const bookingsAPI = {
   > => {
     try {
       const response = await api.get("/api/dashboard/bookings", { params });
-      return { success: true, data: response.data };
+      const data = extractData(response);
+      return { success: true, data };
     } catch (error) {
       return handleApiError(error);
     }
@@ -175,10 +262,8 @@ export const bookingsAPI = {
       }
 
       const response = await api.get(url);
-      return {
-        success: true,
-        data: response.data?.data || response.data,
-      };
+      const data = extractData<{ events: BookingCalendarEvent[] }>(response);
+      return { success: true, data };
     } catch (error) {
       console.error("Error fetching calendar events:", error);
       return handleApiError(error);
@@ -188,7 +273,8 @@ export const bookingsAPI = {
   getById: async (id: string): Promise<ApiResponse<BookingDetail>> => {
     try {
       const response = await api.get(`/api/dashboard/bookings/${id}`);
-      return { success: true, data: response.data };
+      const data = extractData<BookingDetail>(response);
+      return { success: true, data };
     } catch (error) {
       return handleApiError(error);
     }
@@ -202,7 +288,8 @@ export const bookingsAPI = {
   > => {
     try {
       const response = await api.put(`/api/dashboard/bookings/${id}`, data);
-      return { success: true, data: response.data };
+      const responseData = extractData<{ id: string; message: string; updatedFields: string[] }>(response);
+      return { success: true, data: responseData };
     } catch (error) {
       return handleApiError(error);
     }
@@ -213,7 +300,8 @@ export const bookingsAPI = {
   ): Promise<ApiResponse<{ message: string; id: string }>> => {
     try {
       const response = await api.delete(`/api/dashboard/bookings/${id}`);
-      return { success: true, data: response.data };
+      const data = extractData<{ message: string; id: string }>(response);
+      return { success: true, data };
     } catch (error) {
       return handleApiError(error);
     }
@@ -240,7 +328,8 @@ export const usersAPI = {
   > => {
     try {
       const response = await api.get("/api/dashboard/users", { params });
-      return { success: true, data: response.data };
+      const data = extractData(response);
+      return { success: true, data };
     } catch (error) {
       return handleApiError(error);
     }
@@ -256,7 +345,8 @@ export const usersAPI = {
   > => {
     try {
       const response = await api.get(`/api/dashboard/users/${uid}`);
-      return { success: true, data: response.data };
+      const data = extractData(response);
+      return { success: true, data };
     } catch (error) {
       return handleApiError(error);
     }
@@ -270,7 +360,8 @@ export const usersAPI = {
   > => {
     try {
       const response = await api.put(`/api/dashboard/users/${uid}`, data);
-      return { success: true, data: response.data };
+      const responseData = extractData<{ uid: string; message: string; updatedFields: string[] }>(response);
+      return { success: true, data: responseData };
     } catch (error) {
       return handleApiError(error);
     }
@@ -281,7 +372,8 @@ export const usersAPI = {
   ): Promise<ApiResponse<{ message: string; uid: string }>> => {
     try {
       const response = await api.post(`/api/dashboard/users/${uid}/disable`);
-      return { success: true, data: response.data };
+      const data = extractData<{ message: string; uid: string }>(response);
+      return { success: true, data };
     } catch (error) {
       return handleApiError(error);
     }
@@ -297,7 +389,8 @@ export const analyticsAPI = {
       const response = await api.get(
         `/api/dashboard/analytics/overview?period=${period}`
       );
-      return { success: true, data: response.data };
+      const data = extractData<AnalyticsOverview>(response);
+      return { success: true, data };
     } catch (error) {
       return handleApiError(error);
     }
@@ -312,7 +405,8 @@ export const analyticsAPI = {
       const response = await api.get("/api/dashboard/analytics/revenue", {
         params,
       });
-      return { success: true, data: response.data };
+      const data = extractData<RevenueAnalytics>(response);
+      return { success: true, data };
     } catch (error) {
       return handleApiError(error);
     }
@@ -327,7 +421,8 @@ export const analyticsAPI = {
       const response = await api.get("/api/dashboard/analytics/bookings", {
         params,
       });
-      return { success: true, data: response.data };
+      const data = extractData<BookingAnalytics>(response);
+      return { success: true, data };
     } catch (error) {
       return handleApiError(error);
     }
@@ -342,7 +437,8 @@ export const analyticsAPI = {
       const response = await api.get("/api/dashboard/analytics/users", {
         params,
       });
-      return { success: true, data: response.data };
+      const data = extractData<UserAnalytics>(response);
+      return { success: true, data };
     } catch (error) {
       return handleApiError(error);
     }
@@ -352,20 +448,13 @@ export const analyticsAPI = {
     startDate?: string;
     endDate?: string;
     interval?: "day" | "week" | "month";
-  }): Promise<
-    ApiResponse<{
-      total: number;
-      change: number;
-      sources: { source: string; count: number; percentage: number }[];
-      timeline: { labels: string[]; data: number[] };
-      devices: { device: string; count: number; percentage: number }[];
-    }>
-  > => {
+  }): Promise<ApiResponse<TrafficAnalytics>> => {
     try {
       const response = await api.get("/api/dashboard/analytics/traffic", {
         params,
       });
-      return { success: true, data: response.data };
+      const data = extractData<TrafficAnalytics>(response);
+      return { success: true, data };
     } catch (error) {
       return handleApiError(error);
     }
@@ -377,7 +466,8 @@ export const settingsAPI = {
   getSettings: async (): Promise<ApiResponse<SystemSettings>> => {
     try {
       const response = await api.get("/api/dashboard/settings");
-      return { success: true, data: response.data };
+      const data = extractData<SystemSettings>(response);
+      return { success: true, data };
     } catch (error) {
       return handleApiError(error);
     }
@@ -388,7 +478,8 @@ export const settingsAPI = {
   ): Promise<ApiResponse<{ message: string; updatedFields: string[] }>> => {
     try {
       const response = await api.put("/api/dashboard/settings", data);
-      return { success: true, data: response.data };
+      const responseData = extractData<{ message: string; updatedFields: string[] }>(response);
+      return { success: true, data: responseData };
     } catch (error) {
       return handleApiError(error);
     }
@@ -402,13 +493,7 @@ export const settingsAPI = {
     limit?: number;
   }): Promise<
     ApiResponse<{
-      logs: Array<{
-        timestamp: string;
-        level: "info" | "warn" | "error";
-        message: string;
-        source: string;
-        details?: Record<string, unknown>;
-      }>;
+      logs: SystemLog[];
       pagination: {
         total: number;
         pages: number;
@@ -419,7 +504,31 @@ export const settingsAPI = {
   > => {
     try {
       const response = await api.get("/api/dashboard/logs", { params });
-      return { success: true, data: response.data };
+      const data = extractData(response);
+      return { success: true, data };
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+};
+
+// Vehicle API Calls
+export const vehiclesAPI = {
+  getVehicleTypes: async (): Promise<ApiResponse<VehicleType[]>> => {
+    try {
+      const response = await api.get("/api/dashboard/vehicles/types");
+      const data = extractData<VehicleType[]>(response);
+      return { success: true, data };
+    } catch (error) {
+      return handleApiError(error);
+    }
+  },
+
+  getVehiclePricing: async (vehicleTypeId: string): Promise<ApiResponse<VehicleType>> => {
+    try {
+      const response = await api.get(`/api/dashboard/vehicles/${vehicleTypeId}/pricing`);
+      const data = extractData<VehicleType>(response);
+      return { success: true, data };
     } catch (error) {
       return handleApiError(error);
     }

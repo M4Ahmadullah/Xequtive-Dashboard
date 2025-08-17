@@ -26,11 +26,15 @@ export interface User {
   email: string;
   role: "admin" | "user";
   displayName?: string;
+  fullName?: string;
   firstName?: string;
   lastName?: string;
   phone?: string;
   createdAt?: string;
   lastLogin?: string;
+  lastBookingDate?: string;
+  bookingsCount?: number;
+  totalSpent?: number;
 }
 
 // Analytics
@@ -180,43 +184,70 @@ export interface BookingParams {
   status?: string;
   startDate?: string;
   endDate?: string;
+  vehicleType?: string;
   search?: string;
   page?: number;
   limit?: number;
+  sort?: string;
+  order?: "asc" | "desc";
 }
 
 export interface BookingDetail {
   id: string;
   status: "pending" | "confirmed" | "in-progress" | "completed" | "cancelled";
-  startTime: string;
-  endTime: string;
-  userId: string;
-  user?: {
-    uid: string;
+  pickupDate: string;
+  pickupTime: string;
+  customer: {
     fullName: string;
     email: string;
-    phone?: string;
-  };
-  vehicle: {
-    id: string;
-    type?: string;
-    model: string;
+    phone: string;
   };
   locations: {
     pickup: Location;
     dropoff: Location;
     additionalStops?: Location[];
   };
-  price: {
-    base: number;
-    extras?: number;
-    total: number;
-    currency: string;
+  passengers: {
+    count: number;
+    checkedLuggage: number;
+    handLuggage: number;
+    mediumLuggage: number;
+    babySeat: number;
+    childSeat: number;
+    boosterSeat: number;
+    wheelchair: number;
   };
-  paymentStatus: "pending" | "paid" | "failed";
+  vehicle: {
+    id: string;
+    name: string;
+    price: {
+      amount: number;
+      currency: string;
+    };
+  };
+  journey: {
+    distance_miles: number;
+    duration_minutes: number;
+  };
+  specialRequests?: string;
+  travelInformation?: {
+    type: string;
+    details: {
+      airline?: string;
+      flightNumber?: string;
+      scheduledDeparture?: string;
+    };
+  };
+  timeline?: Array<{
+    status: string;
+    timestamp: string;
+    updatedBy?: string;
+  }>;
   createdAt: string;
   updatedAt: string;
   notes?: string;
+  actualPickupTime?: string;
+  actualDropoffTime?: string;
 }
 
 export interface BookingCalendarEvent {
@@ -225,11 +256,10 @@ export interface BookingCalendarEvent {
   start: string;
   end: string;
   status: string;
-  vehicle: {
-    type?: string;
-    model: string;
-  };
-  userId: string;
+  customer: string;
+  pickupLocation: string;
+  dropoffLocation: string;
+  vehicleType: string;
 }
 
 // Locations
@@ -249,11 +279,20 @@ export interface SystemSettings {
   contactEmail: string;
   contactPhone?: string;
   businessHours?: {
-    start: string;
-    end: string;
-    days: string[];
+    timezone: string;
+    weekdays: {
+      start: string;
+      end: string;
+    };
+    weekends: {
+      start: string;
+      end: string;
+    };
   };
   pricing?: {
+    congestionCharge: number;
+    dartfordCrossing: number;
+    airportFees: Record<string, number>;
     baseRate: number;
     currency: string;
     extraFees: Record<string, number>;
@@ -266,8 +305,41 @@ export interface SystemSettings {
     coordinates?: { lat: number; lng: number }[];
   };
   notifications?: {
-    email: boolean;
-    sms: boolean;
-    push: boolean;
+    emailEnabled: boolean;
+    smsEnabled: boolean;
+    pushNotifications?: boolean;
+    bookingConfirmations: boolean;
+    statusUpdates: boolean;
+  };
+  updatedAt?: string;
+  updatedBy?: string;
+}
+
+// Vehicle Information
+export interface VehicleType {
+  id: string;
+  name: string;
+  capacity: number;
+  class: string;
+  minimumFare: number;
+  additionalStopFee: number;
+  waitingTimePerMin: number;
+  additionalWaitingPerHour: number;
+  pricing: {
+    [key: string]: number; // Distance-based pricing
+  };
+}
+
+// System Logs
+export interface SystemLog {
+  id: string;
+  timestamp: string;
+  level: "info" | "warn" | "error";
+  message: string;
+  metadata?: {
+    userId?: string;
+    ipAddress?: string;
+    userAgent?: string;
+    [key: string]: unknown;
   };
 }

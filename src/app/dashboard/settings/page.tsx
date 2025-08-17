@@ -51,9 +51,9 @@ export default function SettingsPage() {
         setCompanyName(response.data.companyName || "");
         setContactEmail(response.data.contactEmail || "");
         setContactPhone(response.data.contactPhone || "");
-        setBusinessHoursStart(response.data.businessHours?.start || "");
-        setBusinessHoursEnd(response.data.businessHours?.end || "");
-        setBusinessDays(response.data.businessHours?.days || []);
+        setBusinessHoursStart(response.data.businessHours?.weekdays?.start || "");
+        setBusinessHoursEnd(response.data.businessHours?.weekdays?.end || "");
+        setBusinessDays(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]); // Default weekdays
 
         // Pricing settings
         setBaseRate(response.data.pricing?.baseRate || 0);
@@ -73,9 +73,9 @@ export default function SettingsPage() {
         }
 
         // Notification settings
-        setEmailNotifications(response.data.notifications?.email || false);
-        setSmsNotifications(response.data.notifications?.sms || false);
-        setPushNotifications(response.data.notifications?.push || false);
+        setEmailNotifications(response.data.notifications?.emailEnabled || false);
+        setSmsNotifications(response.data.notifications?.smsEnabled || false);
+        setPushNotifications(response.data.notifications?.pushNotifications || false);
       } else {
         setError(response.error?.message || "Failed to load settings");
       }
@@ -101,11 +101,26 @@ export default function SettingsPage() {
       contactEmail,
       contactPhone,
       businessHours: {
-        start: businessHoursStart,
-        end: businessHoursEnd,
-        days: businessDays,
+        timezone: "Europe/London", // Default timezone
+        weekdays: {
+          start: businessHoursStart,
+          end: businessHoursEnd,
+        },
+        weekends: {
+          start: businessHoursStart, // Assuming weekends use the same start/end as weekdays for now
+          end: businessHoursEnd,
+        },
       },
       pricing: {
+        congestionCharge,
+        dartfordCrossing,
+        airportFees: {
+          heathrow: 10.0,
+          gatwick: 8.0,
+          stansted: 8.0,
+          luton: 8.0,
+          city: 8.0,
+        },
         baseRate,
         currency,
         extraFees: {
@@ -119,9 +134,11 @@ export default function SettingsPage() {
         includedIslands,
       },
       notifications: {
-        email: emailNotifications,
-        sms: smsNotifications,
-        push: pushNotifications,
+        emailEnabled: emailNotifications,
+        smsEnabled: smsNotifications,
+        pushNotifications,
+        bookingConfirmations: true,
+        statusUpdates: true,
       },
     };
 

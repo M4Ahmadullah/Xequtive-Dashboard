@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { analyticsAPI } from "@/lib/api";
+
 import {
   RevenueAnalytics,
   BookingAnalytics,
@@ -48,44 +48,66 @@ export default function AnalyticsPage() {
     try {
       // Fetch analytics based on active tab
       if (activeTab === "revenue" || activeTab === "all") {
-        const response = await analyticsAPI.getRevenueAnalytics(params);
-        if (response.success && response.data) {
-          setRevenueData(response.data);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/analytics/revenue?startDate=${params.startDate}&endDate=${params.endDate}&interval=${params.interval}`, {
+          credentials: 'include'
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data) {
+            setRevenueData(data.data);
+          } else {
+            setError(data.error?.message || "Failed to load revenue analytics");
+          }
         } else {
-          setError(
-            response.error?.message || "Failed to load revenue analytics"
-          );
+          setError("Failed to load revenue analytics");
         }
       }
 
       if (activeTab === "bookings" || activeTab === "all") {
-        const response = await analyticsAPI.getBookingAnalytics(params);
-        if (response.success && response.data) {
-          setBookingData(response.data);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/analytics/bookings?startDate=${params.startDate}&endDate=${params.endDate}&interval=${params.interval}`, {
+          credentials: 'include'
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data) {
+            setBookingData(data.data);
+          } else {
+            setError(data.error?.message || "Failed to load booking analytics");
+          }
         } else {
-          setError(
-            response.error?.message || "Failed to load booking analytics"
-          );
+          setError("Failed to load booking analytics");
         }
       }
 
       if (activeTab === "users" || activeTab === "all") {
-        const response = await analyticsAPI.getUserAnalytics(params);
-        if (response.success && response.data) {
-          setUserData(response.data);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/analytics/users?startDate=${params.startDate}&endDate=${params.endDate}&interval=${params.interval}`, {
+          credentials: 'include'
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data) {
+            setUserData(data.data);
+          } else {
+            setError(data.error?.message || "Failed to load user analytics");
+          }
         } else {
-          setError(response.error?.message || "Failed to load user analytics");
+          setError("Failed to load user analytics");
         }
       }
 
       if (activeTab === "traffic" || activeTab === "all") {
-        const response = await analyticsAPI.getTrafficAnalytics(params);
-        if (response.success && response.data) {
-          setTrafficData(response.data as unknown as TrafficAnalytics);
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/analytics/traffic?startDate=${params.startDate}&endDate=${params.endDate}&interval=${params.interval}`, {
+          credentials: 'include'
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data) {
+            setTrafficData(data.data);
+          } else {
+            setError(data.error?.message || "Failed to load traffic analytics");
+          }
         } else {
-          setError(
-            response.error?.message || "Failed to load traffic analytics"
-          );
+          setError("Failed to load traffic analytics");
         }
       }
     } catch (err) {
@@ -242,31 +264,47 @@ export default function AnalyticsPage() {
           ) : revenueData ? (
             <>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <Card className="bg-gray-800 border-gray-700">
+                <Card className="bg-gradient-to-br from-emerald-900/80 to-emerald-800/60 border-emerald-700 hover:border-emerald-500/50 hover:shadow-xl transition-all duration-300">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-gray-400 font-medium">
+                    <CardTitle className="text-sm text-emerald-300 font-semibold">
                       Total Revenue
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold text-white">
-                      {revenueData?.currency || "$"}
+                    <div className="text-3xl font-bold text-emerald-100">
+                      {revenueData?.currency || "£"}
                       {revenueData?.total?.toLocaleString() || "0"}
                     </div>
+                    <p className="text-sm text-emerald-300 mt-1">All time earnings</p>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-gray-800 border-gray-700">
+                <Card className="bg-gradient-to-br from-blue-900/80 to-blue-800/60 border-blue-700 hover:border-blue-500/50 hover:shadow-xl transition-all duration-300">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-gray-400 font-medium">
+                    <CardTitle className="text-sm text-blue-300 font-semibold">
                       Average Revenue
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="text-3xl font-bold text-white">
-                      {revenueData?.currency || "$"}
+                    <div className="text-3xl font-bold text-blue-100">
+                      {revenueData?.currency || "£"}
                       {revenueData?.averagePerBooking?.toLocaleString() || "0"}
                     </div>
+                    <p className="text-sm text-blue-300 mt-1">Per booking</p>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-gradient-to-br from-purple-900/80 to-purple-800/60 border-purple-700 hover:border-purple-500/50 hover:shadow-xl transition-all duration-300">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm text-purple-300 font-semibold">
+                      Total Bookings
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-3xl font-bold text-purple-100">
+                      {revenueData?.total ? Math.round(revenueData.total / (revenueData.averagePerBooking || 1)) : "0"}
+                    </div>
+                    <p className="text-sm text-purple-300 mt-1">Calculated from revenue</p>
                   </CardContent>
                 </Card>
               </div>

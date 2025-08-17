@@ -6,6 +6,7 @@ import { Navbar } from "@/components/Navbar";
 import { Sidebar } from "@/components/Sidebar";
 import { Button } from "@/components/ui/button";
 import { FaBars } from "react-icons/fa";
+import { authAPI } from "@/lib/api";
 
 interface AuthCheckProps {
   children: React.ReactNode;
@@ -18,26 +19,15 @@ function AuthCheck({ children }: AuthCheckProps) {
   useEffect(() => {
     async function checkAuthentication() {
       try {
-        // Use the check-admin endpoint instead of localStorage
-        const response = await fetch("/api/dashboard/auth/check-admin", {
-          credentials: "include", // Important for cookies
-        });
-
-        if (!response.ok) {
-          // If response is not OK, redirect to sign in page
-          router.push("/auth/signin");
-          return;
-        }
-
-        const data = await response.json();
-
-        // Verify both successful response and admin role
-        if (data.success && data.data.role === "admin") {
-          // Store user info in localStorage for UI display only
-          localStorage.setItem("userInfo", JSON.stringify(data.data));
+        // Check authentication with backend
+        const response = await authAPI.checkAdminStatus();
+        
+        if (response.success && response.data) {
+          console.log("Authentication successful:", response.data);
           setLoading(false);
         } else {
-          // If user is not an admin, redirect to sign in
+          console.log("Authentication failed:", response.error);
+          // Clear any invalid data and redirect to signin
           localStorage.removeItem("userInfo");
           router.push("/auth/signin");
         }

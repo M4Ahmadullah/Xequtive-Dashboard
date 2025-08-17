@@ -36,11 +36,10 @@ interface CalendarEvent {
   start: Date;
   end: Date;
   status: string;
-  vehicle: {
-    type?: string;
-    model: string;
-  };
-  userId: string;
+  customer: string;
+  pickupLocation: string;
+  dropoffLocation: string;
+  vehicleType: string;
   resource: BookingCalendarEvent;
 }
 
@@ -108,6 +107,11 @@ export default function BookingCalendarPage() {
     from: new Date(),
     to: addDays(new Date(), 30),
   });
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [selectedDateBookings, setSelectedDateBookings] = useState<BookingCalendarEvent[]>([]);
+  const [isDateModalOpen, setIsDateModalOpen] = useState(false);
+  const [selectedBooking, setSelectedBooking] = useState<BookingCalendarEvent | null>(null);
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
 
   const fetchCalendarEvents = useCallback(async () => {
     if (!dateRange?.from || !dateRange?.to) return;
@@ -144,6 +148,40 @@ export default function BookingCalendarPage() {
     fetchCalendarEvents();
   }, [dateRange, fetchCalendarEvents]);
 
+  // Handle date click to show bookings for that date
+  const handleDateClick = (date: Date) => {
+    const clickedDate = new Date(date);
+    clickedDate.setHours(0, 0, 0, 0);
+    
+    const bookingsForDate = events.filter(event => {
+      const eventDate = new Date(event.start);
+      eventDate.setHours(0, 0, 0, 0);
+      return eventDate.getTime() === clickedDate.getTime();
+    });
+    
+    setSelectedDate(clickedDate);
+    setSelectedDateBookings(bookingsForDate);
+    setIsDateModalOpen(true);
+  };
+
+  // Handle booking click to show detailed modal
+  const handleBookingClick = (booking: BookingCalendarEvent) => {
+    setSelectedBooking(booking);
+    setIsBookingModalOpen(true);
+  };
+
+  // Close modals
+  const closeDateModal = () => {
+    setIsDateModalOpen(false);
+    setSelectedDate(null);
+    setSelectedDateBookings([]);
+  };
+
+  const closeBookingModal = () => {
+    setIsBookingModalOpen(false);
+    setSelectedBooking(null);
+  };
+
   // Convert BookingCalendarEvent to react-big-calendar Event format
   const calendarEvents: CalendarEvent[] = events.map((event) => ({
     id: event.id,
@@ -151,8 +189,10 @@ export default function BookingCalendarPage() {
     start: new Date(event.start),
     end: new Date(event.end),
     status: event.status,
-    vehicle: event.vehicle,
-    userId: event.userId,
+    customer: event.customer,
+    pickupLocation: event.pickupLocation,
+    dropoffLocation: event.dropoffLocation,
+    vehicleType: event.vehicleType,
     resource: event,
   }));
 
@@ -504,14 +544,15 @@ export default function BookingCalendarPage() {
                 popup
                 popupOffset={{ x: 0, y: 10 }}
                 onSelectEvent={(event: CalendarEvent) => {
-                  // When we need to create a tooltip or modal
-                  console.log(event);
+                  handleBookingClick(event.resource);
                 }}
+                onSelectSlot={({ start }) => handleDateClick(start)}
+                selectable
                 eventPropGetter={(event: CalendarEvent) => ({
                   className: `status-${event.status.toLowerCase()}`,
                 })}
-                onDrillDown={(date: Date, view: View) => {
-                  console.log(date, view);
+                onDrillDown={(date: Date) => {
+                  handleDateClick(date);
                 }}
               />
             </div>
@@ -547,6 +588,200 @@ export default function BookingCalendarPage() {
           <p className="text-xs opacity-80">Booking has been cancelled</p>
         </div>
       </div>
+
+      {/* Date Bookings Modal */}
+      {isDateModalOpen && selectedDate && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-gray-900 rounded-2xl border border-gray-700 w-[95vw] h-[95vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-purple-900/50 to-purple-800/50 border-b border-purple-700/50 p-6">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h2 className="text-2xl font-bold text-white">
+                    Bookings for {selectedDate.toLocaleDateString()}
+                  </h2>
+                  <p className="text-purple-300 mt-1">
+                    {selectedDateBookings.length} booking{selectedDateBookings.length !== 1 ? 's' : ''} found
+                  </p>
+                </div>
+                <button
+                  onClick={closeDateModal}
+                  className="text-gray-400 hover:text-white text-2xl font-bold p-2 hover:bg-gray-800 rounded-lg transition-colors"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              {selectedDateBookings.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                  {selectedDateBookings.map((booking) => (
+                    <Card
+                      key={booking.id}
+                      className="bg-gray-800/50 border border-gray-700 hover:border-purple-500/50 hover:shadow-xl transition-all duration-300 cursor-pointer"
+                      onClick={() => handleBookingClick(booking)}
+                    >
+                      <CardContent className="p-4">
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-start">
+                            <h3 className="font-semibold text-white text-sm">
+                              #{booking.id.slice(-6)}
+                            </h3>
+                            <span
+                              className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                booking.status === 'confirmed' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' :
+                                booking.status === 'pending' ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30' :
+                                booking.status === 'completed' ? 'bg-green-500/20 text-green-300 border border-green-500/30' :
+                                'bg-gray-500/20 text-gray-300 border border-gray-500/30'
+                              }`}
+                            >
+                              {booking.status}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-400 mb-1">Customer</p>
+                            <p className="text-white font-medium text-sm">{booking.customer}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-400 mb-1">Vehicle</p>
+                            <p className="text-white font-medium text-sm">{booking.vehicleType}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-400 mb-1">Pickup</p>
+                            <p className="text-white font-medium text-sm truncate">{booking.pickupLocation}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-400 mb-1">Dropoff</p>
+                            <p className="text-white font-medium text-sm truncate">{booking.dropoffLocation}</p>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center p-8">
+                  <div className="w-16 h-16 bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <CalendarIcon className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <p className="text-gray-400 text-lg font-medium">No bookings for this date</p>
+                  <p className="text-gray-500 text-sm">Select another date to view bookings</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Booking Details Modal */}
+      {isBookingModalOpen && selectedBooking && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-gray-900 rounded-2xl border border-gray-700 w-[95vw] h-[95vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-purple-900/50 to-purple-800/50 border-b border-purple-700/50 p-6">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h2 className="text-2xl font-bold text-white">
+                    Booking #{selectedBooking.id}
+                  </h2>
+                  <p className="text-purple-300 mt-1">
+                    {new Date(selectedBooking.start).toLocaleDateString()} at {new Date(selectedBooking.start).toLocaleTimeString()}
+                  </p>
+                </div>
+                <button
+                  onClick={closeBookingModal}
+                  className="text-gray-400 hover:text-white text-2xl font-bold p-2 hover:bg-gray-800 rounded-lg transition-colors"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="mt-4">
+                <span
+                  className={`px-3 py-1 rounded-full text-sm font-medium ${
+                    selectedBooking.status === 'confirmed' ? 'bg-blue-500/20 text-blue-300 border border-blue-500/30' :
+                    selectedBooking.status === 'pending' ? 'bg-yellow-500/20 text-yellow-300 border border-yellow-500/30' :
+                    selectedBooking.status === 'completed' ? 'bg-green-500/20 text-green-300 border border-green-500/30' :
+                    'bg-gray-500/20 text-gray-300 border border-gray-500/30'
+                  }`}
+                >
+                  {selectedBooking.status}
+                </span>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Customer Information */}
+                <Card className="bg-gray-800/50 border-gray-700">
+                  <CardContent className="p-4">
+                    <h3 className="text-purple-300 font-semibold mb-3">Customer Information</h3>
+                    <div className="space-y-2">
+                      <div>
+                        <label className="text-sm text-gray-400">Customer Name</label>
+                        <p className="text-white font-medium">{selectedBooking.customer}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Vehicle Information */}
+                <Card className="bg-gray-800/50 border-gray-700">
+                  <CardContent className="p-4">
+                    <h3 className="text-blue-300 font-semibold mb-3">Vehicle Information</h3>
+                    <div className="space-y-2">
+                      <div>
+                        <label className="text-sm text-gray-400">Vehicle Type</label>
+                        <p className="text-white font-medium">{selectedBooking.vehicleType}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Journey Details */}
+                <Card className="bg-gray-800/50 border-gray-700">
+                  <CardContent className="p-4">
+                    <h3 className="text-emerald-300 font-semibold mb-3">Journey Details</h3>
+                    <div className="space-y-2">
+                      <div>
+                        <label className="text-sm text-gray-400">Pickup Time</label>
+                        <p className="text-white font-medium">
+                          {new Date(selectedBooking.start).toLocaleString()}
+                        </p>
+                      </div>
+                      <div>
+                        <label className="text-sm text-gray-400">Dropoff Time</label>
+                        <p className="text-white font-medium">
+                          {new Date(selectedBooking.end).toLocaleString()}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Locations */}
+                <Card className="bg-gray-800/50 border-gray-700">
+                  <CardContent className="p-4">
+                    <h3 className="text-amber-300 font-semibold mb-3">Locations</h3>
+                    <div className="space-y-2">
+                      <div>
+                        <label className="text-sm text-gray-400">Pickup Location</label>
+                        <p className="text-white font-medium">{selectedBooking.pickupLocation}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm text-gray-400">Dropoff Location</label>
+                        <p className="text-white font-medium">{selectedBooking.dropoffLocation}</p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

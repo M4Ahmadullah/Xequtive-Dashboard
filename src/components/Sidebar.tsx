@@ -6,7 +6,6 @@ import {
   FaUsers,
   FaChartPie,
   FaCog,
-  FaCarAlt,
 } from "react-icons/fa";
 
 export function Sidebar() {
@@ -32,11 +31,6 @@ export function Sidebar() {
       name: "Users",
       href: "/dashboard/users",
       icon: <FaUsers className="h-5 w-5" />,
-    },
-    {
-      name: "Vehicles",
-      href: "/dashboard/vehicles",
-      icon: <FaCarAlt className="h-5 w-5" />,
     },
     {
       name: "Analytics",

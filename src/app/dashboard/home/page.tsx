@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { bookingsAPI, analyticsAPI, usersAPI } from "@/lib/api";
 import { BookingDetail } from "@/types/api";
 import Link from "next/link";
 import {
@@ -34,78 +33,79 @@ export default function DashboardHomePage() {
       setLoading(true);
       setError(null);
 
-      function getLastMonth(): string {
-        const date = new Date();
-        date.setMonth(date.getMonth() - 1);
-        return formatDate(date);
-      }
-
-      function formatDate(date: Date): string {
-        return date.toISOString().split("T")[0];
-      }
-
       try {
-        // Fetch summary stats
-        const [bookingsResponse, usersResponse, analyticsResponse] =
-          await Promise.all([
-            bookingsAPI.getAll({ limit: 5, page: 1 }),
-            usersAPI.getAll({ limit: 10, page: 1 }),
-            analyticsAPI.getRevenueAnalytics({
-              startDate: getLastMonth(),
-              endDate: formatDate(new Date()),
-              interval: "day",
-            }),
-          ]);
+        // Fetch real data from backend APIs
+        const [bookingsResponse, usersResponse, analyticsResponse] = await Promise.all([
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/bookings?limit=5&page=1`, {
+            credentials: 'include'
+          }),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/users?limit=10&page=1`, {
+            credentials: 'include'
+          }),
+          fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/analytics/overview?period=week`, {
+            credentials: 'include'
+          })
+        ]);
 
-        // Process bookings data if available
-        if (bookingsResponse.success && bookingsResponse.data?.bookings) {
-          const pendingCount = bookingsResponse.data.bookings.filter(
-            (booking: BookingDetail) => booking.status === "pending"
-          ).length;
+        // Process bookings data
+        if (bookingsResponse.ok) {
+          const bookingsData = await bookingsResponse.json();
+          if (bookingsData.success && bookingsData.data?.bookings) {
+            const pendingCount = bookingsData.data.bookings.filter(
+              (booking: BookingDetail) => booking.status === "pending"
+            ).length;
 
-          const todayCount = bookingsResponse.data.bookings.filter(
-            (booking: BookingDetail) => {
-              const bookingDate = new Date(booking.createdAt);
-              const today = new Date();
-              return (
-                bookingDate.getDate() === today.getDate() &&
-                bookingDate.getMonth() === today.getMonth() &&
-                bookingDate.getFullYear() === today.getFullYear()
-              );
-            }
-          ).length;
+            const todayCount = bookingsData.data.bookings.filter(
+              (booking: BookingDetail) => {
+                const bookingDate = new Date(booking.createdAt);
+                const today = new Date();
+                return (
+                  bookingDate.getDate() === today.getDate() &&
+                  bookingDate.getMonth() === today.getMonth() &&
+                  bookingDate.getFullYear() === today.getFullYear()
+                );
+              }
+            ).length;
 
-          setRecentBookings(bookingsResponse.data.bookings.slice(0, 5));
+            setRecentBookings(bookingsData.data.bookings.slice(0, 5));
 
-          setStats((prev) => ({
-            ...prev,
-            totalBookings: bookingsResponse.data?.pagination?.total || 0,
-            pendingBookings: pendingCount,
-            todayBookings: todayCount,
-          }));
+            setStats((prev) => ({
+              ...prev,
+              totalBookings: bookingsData.data?.pagination?.total || 0,
+              pendingBookings: pendingCount,
+              todayBookings: todayCount,
+            }));
+          }
         }
 
-        // Process users data if available
-        if (usersResponse.success && usersResponse.data?.pagination) {
-          setStats((prev) => ({
-            ...prev,
-            totalUsers: usersResponse.data?.pagination?.total || 0,
-          }));
+        // Process users data
+        if (usersResponse.ok) {
+          const usersData = await usersResponse.json();
+          if (usersData.success && usersData.data?.pagination) {
+            setStats((prev) => ({
+              ...prev,
+              totalUsers: usersData.data?.pagination?.total || 0,
+            }));
+          }
         }
 
-        // Process analytics data if available
-        if (analyticsResponse.success && analyticsResponse.data) {
-          setStats((prev) => ({
-            ...prev,
-            revenue: {
-              total: analyticsResponse.data?.total || 0,
-              trend: 0,
-            },
-          }));
+        // Process analytics data
+        if (analyticsResponse.ok) {
+          const analyticsData = await analyticsResponse.json();
+          if (analyticsData.success && analyticsData.data) {
+            setStats((prev) => ({
+              ...prev,
+              revenue: {
+                total: analyticsData.data.revenue?.total || 0,
+                trend: analyticsData.data.revenue?.comparisonPercentage || 0,
+              },
+            }));
+          }
         }
-      } catch (err) {
-        console.error("Error fetching dashboard data:", err);
-        setError("Failed to load dashboard data. Please try again.");
+        setError(null);
+      } catch (error) {
+        console.error("Error loading dashboard data:", error);
+        setError("Failed to load dashboard data");
       } finally {
         setLoading(false);
       }
@@ -156,78 +156,217 @@ export default function DashboardHomePage() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6 max-w-7xl mx-auto bg-gray-50 min-h-screen">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="text-gray-600">Welcome to your Xequtive Dashboard</p>
+        <div className="bg-gradient-to-r from-purple-600 to-blue-600 rounded-2xl p-8 text-white">
+          <h1 className="text-4xl font-bold mb-2">Welcome back!</h1>
+          <p className="text-xl text-purple-100">Here&apos;s what&apos;s happening with your Xequtive service today</p>
+        </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm text-gray-500 font-medium">
-              Total Bookings
-            </CardTitle>
-            <FaCalendarCheck className="h-5 w-5 text-indigo-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{stats.totalBookings}</div>
-            <p className="text-sm text-gray-500 mt-1">
-              {stats.todayBookings} new today
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm text-gray-500 font-medium">
-              Pending Bookings
-            </CardTitle>
-            <FaCarSide className="h-5 w-5 text-yellow-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">{stats.pendingBookings}</div>
-            <p className="text-sm text-gray-500 mt-1">Awaiting confirmation</p>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm text-gray-500 font-medium">
-              Total Revenue
-            </CardTitle>
-            <FaDollarSign className="h-5 w-5 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold">
-              ${stats.revenue.total.toLocaleString()}
+      {/* Enhanced Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <Card className="bg-white border-0 shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-1">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                <FaCalendarCheck className="h-6 w-6 text-white" />
+              </div>
+              <div className="text-right">
+                <span className="text-xs text-gray-500 font-medium">This Week</span>
+                <div className="text-lg font-bold text-gray-900">{stats.totalBookings}</div>
+              </div>
             </div>
-            <div
-              className={`text-sm mt-1 ${
-                stats.revenue.trend > 0
-                  ? "text-green-500"
-                  : stats.revenue.trend < 0
-                  ? "text-red-500"
-                  : "text-gray-500"
-              }`}
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Total Bookings</span>
+              <span className="text-xs text-gray-400">0%</span>
+            </div>
+            <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+              <div className="bg-blue-600 h-2 rounded-full" style={{ width: '60%' }}></div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white border-0 shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-1">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-xl flex items-center justify-center">
+                <FaDollarSign className="h-6 w-6 text-white" />
+              </div>
+              <div className="text-right">
+                <span className="text-xs text-gray-500 font-medium">This Week</span>
+                <div className="text-lg font-bold text-gray-900">£{stats.revenue.total.toLocaleString()}</div>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Revenue</span>
+              <span className="text-xs text-gray-400">0%</span>
+            </div>
+            <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+              <div className="bg-emerald-600 h-2 rounded-full" style={{ width: '75%' }}></div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white border-0 shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-1">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
+                <FaUserAlt className="h-6 w-6 text-white" />
+              </div>
+              <div className="text-right">
+                <span className="text-xs text-gray-500 font-medium">This Week</span>
+                <div className="text-lg font-bold text-gray-900">{stats.totalUsers}</div>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Total Users</span>
+              <span className="text-xs text-gray-400">0%</span>
+            </div>
+            <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+              <div className="bg-purple-600 h-2 rounded-full" style={{ width: '45%' }}></div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white border-0 shadow-xl hover:shadow-2xl transition-all duration-500 transform hover:-translate-y-1">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <div className="w-12 h-12 bg-gradient-to-br from-amber-500 to-amber-600 rounded-xl flex items-center justify-center">
+                <FaCarSide className="h-6 w-6 text-white" />
+              </div>
+              <div className="text-right">
+                <span className="text-xs text-gray-500 font-medium">Most Booked</span>
+                <div className="text-lg font-bold text-gray-900">Standard Saloon</div>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-600">Vehicle Type</span>
+              <span className="text-xs text-amber-600 font-medium">Most popular</span>
+            </div>
+            <div className="mt-2 w-full bg-gray-200 rounded-full h-2">
+              <div className="bg-amber-600 h-2 rounded-full" style={{ width: '80%' }}></div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Analytics Overview */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <Card className="bg-white border-0 shadow-xl">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-gray-900">Booking Distribution</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 bg-amber-500 rounded-full"></div>
+                <span className="text-sm font-medium text-gray-700">Pending</span>
+              </div>
+              <span className="text-lg font-bold text-gray-900">{stats.pendingBookings}</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                <span className="text-sm font-medium text-gray-700">Confirmed</span>
+              </div>
+              <span className="text-lg font-bold text-gray-900">0</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 bg-emerald-500 rounded-full"></div>
+                <span className="text-sm font-medium text-gray-700">Completed</span>
+              </div>
+              <span className="text-lg font-bold text-gray-900">0</span>
+            </div>
+            <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 bg-red-500 rounded-full"></div>
+                <span className="text-sm font-medium text-gray-700">Cancelled</span>
+              </div>
+              <span className="text-lg font-bold text-gray-900">0</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-white border-0 shadow-xl">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-gray-900">Quick Actions</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Link
+              href="/dashboard/bookings"
+              className="flex items-center p-3 bg-gradient-to-r from-purple-50 to-purple-100 border border-purple-200 rounded-lg hover:from-purple-100 hover:to-purple-200 transition-all duration-300"
             >
-              {stats.revenue.trend > 0 ? "+" : ""}
-              {stats.revenue.trend}% from last month
-            </div>
+              <div className="w-10 h-10 bg-purple-500 rounded-lg flex items-center justify-center mr-3">
+                <FaCalendarCheck className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">View All Bookings</h3>
+                <p className="text-sm text-gray-600">Manage and track all bookings</p>
+              </div>
+            </Link>
+            <Link
+              href="/dashboard/analytics"
+              className="flex items-center p-3 bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-lg hover:from-blue-100 hover:to-blue-200 transition-all duration-300"
+            >
+              <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center mr-3">
+                <FaChartLine className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Analytics Dashboard</h3>
+                <p className="text-sm text-gray-600">View detailed insights</p>
+              </div>
+            </Link>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm text-gray-500 font-medium">
-              Total Users
-            </CardTitle>
-            <FaUserAlt className="h-5 w-5 text-blue-500" />
+        <Card className="bg-white border-0 shadow-xl">
+          <CardHeader>
+            <CardTitle className="text-lg font-semibold text-gray-900">Status Distribution</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{stats.totalUsers}</div>
-            <p className="text-sm text-gray-500 mt-1">Registered accounts</p>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Pending</span>
+                <span className="text-lg font-bold text-amber-600">{stats.pendingBookings}</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-amber-500 h-2 rounded-full" style={{ width: `${(stats.pendingBookings / stats.totalBookings) * 100}%` }}></div>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Confirmed</span>
+                <span className="text-lg font-bold text-blue-600">0</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-blue-500 h-2 rounded-full" style={{ width: '0%' }}></div>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Completed</span>
+                <span className="text-lg font-bold text-emerald-600">0</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-emerald-500 h-2 rounded-full" style={{ width: '0%' }}></div>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600">Cancelled</span>
+                <span className="text-lg font-bold text-red-600">0</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="bg-red-500 h-2 rounded-full" style={{ width: '0%' }}></div>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -235,112 +374,131 @@ export default function DashboardHomePage() {
       {/* Recent Bookings and Quick Actions */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2">
-          <Card>
-            <CardHeader>
+          <Card className="bg-white border-0 shadow-lg">
+            <CardHeader className="bg-gradient-to-r from-purple-50 to-blue-50 border-b border-purple-100">
               <div className="flex justify-between items-center">
-                <CardTitle>Recent Bookings</CardTitle>
+                <CardTitle className="text-purple-900">Recent Bookings</CardTitle>
                 <Link
                   href="/dashboard/bookings"
-                  className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center"
+                  className="text-sm text-purple-600 hover:text-purple-800 flex items-center font-medium"
                 >
                   View all <FaArrowRight className="ml-1 h-3 w-3" />
                 </Link>
               </div>
             </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
               {recentBookings.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b text-sm text-gray-500">
-                        <th className="pb-2 text-left font-medium">ID</th>
-                        <th className="pb-2 text-left font-medium">Customer</th>
-                        <th className="pb-2 text-left font-medium">Status</th>
-                        <th className="pb-2 text-left font-medium">Date</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {recentBookings.map((booking) => (
-                        <tr
-                          key={booking.id}
-                          className="border-b hover:bg-gray-50"
-                        >
-                          <td className="py-3 text-sm">
-                            {booking.id.substring(0, 8)}
-                          </td>
-                          <td className="py-3 text-sm">
-                            {booking.user?.fullName || "Unknown"}
-                          </td>
-                          <td className="py-3">
-                            <span
-                              className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusClass(
-                                booking.status
-                              )}`}
-                            >
-                              {booking.status}
+                <div className="divide-y divide-gray-100">
+                  {recentBookings.map((booking, index) => (
+                    <div
+                      key={booking.id}
+                      className={`p-4 hover:bg-gray-50 transition-colors ${
+                        index === 0 ? 'rounded-t-lg' : ''
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-4">
+                          <div className="w-10 h-10 bg-gradient-to-br from-purple-100 to-blue-100 rounded-full flex items-center justify-center">
+                            <span className="text-sm font-semibold text-purple-700">
+                              #{booking.id.substring(0, 6)}
                             </span>
-                          </td>
-                          <td className="py-3 text-sm">
-                            {new Date(booking.createdAt).toLocaleDateString()}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">
+                              {booking.customer?.fullName || "Unknown"}
+                            </p>
+                            <p className="text-sm text-gray-500">
+                              {new Date(booking.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-4">
+                          <span
+                            className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
+                              booking.status === 'confirmed' ? 'bg-green-100 text-green-800' :
+                              booking.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                              booking.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                              'bg-gray-100 text-gray-800'
+                            }`}
+                          >
+                            {booking.status}
+                          </span>
+                          <span className="text-sm font-medium text-gray-900">
+                            £{booking.vehicle.price.amount.toLocaleString()}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               ) : (
-                <p className="text-gray-500 text-center py-4">
-                  No recent bookings found
-                </p>
+                <div className="p-8 text-center">
+                  <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <FaCalendarCheck className="h-8 w-8 text-gray-400" />
+                  </div>
+                  <p className="text-gray-500 text-lg font-medium">No recent bookings</p>
+                  <p className="text-gray-400 text-sm">Bookings will appear here once they&apos;re created</p>
+                </div>
               )}
             </CardContent>
           </Card>
         </div>
 
         <div>
-          <Card>
-            <CardHeader>
-              <CardTitle>Quick Actions</CardTitle>
+          <Card className="bg-white border-0 shadow-lg">
+            <CardHeader className="bg-gradient-to-r from-purple-50 to-blue-50 border-b border-purple-100">
+              <CardTitle className="text-purple-900">Quick Actions</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 p-6">
               <Link
-                href="/dashboard/bookings/new"
-                className="flex items-center p-3 rounded-lg border border-gray-200 hover:border-indigo-500 hover:bg-indigo-50 transition-colors"
+                href="/dashboard/bookings"
+                className="flex items-center p-4 rounded-xl border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition-all duration-300 transform hover:scale-105"
               >
-                <div className="mr-3 bg-indigo-100 p-2 rounded-md">
-                  <FaCalendarCheck className="h-5 w-5 text-indigo-600" />
+                <div className="mr-4 bg-gradient-to-br from-purple-100 to-purple-200 p-3 rounded-xl">
+                  <FaCalendarCheck className="h-6 w-6 text-purple-600" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-medium">New Booking</h3>
-                  <p className="text-xs text-gray-500">Create a booking</p>
+                  <h3 className="text-sm font-semibold text-gray-900">View Bookings</h3>
+                  <p className="text-xs text-gray-600">Manage all bookings</p>
                 </div>
               </Link>
 
               <Link
                 href="/dashboard/analytics"
-                className="flex items-center p-3 rounded-lg border border-gray-200 hover:border-indigo-500 hover:bg-indigo-50 transition-colors"
+                className="flex items-center p-4 rounded-xl border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-all duration-300 transform hover:scale-105"
               >
-                <div className="mr-3 bg-indigo-100 p-2 rounded-md">
-                  <FaChartLine className="h-5 w-5 text-indigo-600" />
+                <div className="mr-4 bg-gradient-to-br from-blue-100 to-blue-200 p-3 rounded-xl">
+                  <FaChartLine className="h-6 w-6 text-blue-600" />
                 </div>
                 <div>
-                  <h3 className="text-sm font-medium">Analytics</h3>
-                  <p className="text-xs text-gray-500">
-                    View detailed analytics
-                  </p>
+                  <h3 className="text-sm font-semibold text-gray-900">Analytics</h3>
+                  <p className="text-xs text-gray-600">View detailed insights</p>
+                </div>
+              </Link>
+
+              <Link
+                href="/dashboard/users"
+                className="flex items-center p-4 rounded-xl border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 transition-all duration-300 transform hover:scale-105"
+              >
+                <div className="mr-4 bg-gradient-to-br from-emerald-100 to-emerald-200 p-3 rounded-xl">
+                  <FaUserAlt className="h-6 w-6 text-emerald-600" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-900">Users</h3>
+                  <p className="text-xs text-gray-600">Manage user accounts</p>
                 </div>
               </Link>
 
               <Link
                 href="/dashboard/settings"
-                className="flex items-center p-3 rounded-lg border border-gray-200 hover:border-indigo-500 hover:bg-indigo-50 transition-colors"
+                className="flex items-center p-4 rounded-xl border border-gray-200 hover:border-amber-300 hover:bg-amber-50 transition-all duration-300 transform hover:scale-105"
               >
-                <div className="mr-3 bg-indigo-100 p-2 rounded-md">
+                <div className="mr-4 bg-gradient-to-br from-amber-100 to-amber-200 p-3 rounded-xl">
                   <svg
-                    className="h-5 w-5 text-indigo-600"
+                    className="h-6 w-6 text-amber-600"
                     fill="none"
-                    viewBox="0 0 24 24"
                     stroke="currentColor"
+                    viewBox="0 0 24 24"
                   >
                     <path
                       strokeLinecap="round"
@@ -357,8 +515,8 @@ export default function DashboardHomePage() {
                   </svg>
                 </div>
                 <div>
-                  <h3 className="text-sm font-medium">Settings</h3>
-                  <p className="text-xs text-gray-500">Manage your settings</p>
+                  <h3 className="text-sm font-semibold text-gray-900">Settings</h3>
+                  <p className="text-xs text-gray-600">Configure system</p>
                 </div>
               </Link>
             </CardContent>
@@ -369,19 +527,4 @@ export default function DashboardHomePage() {
   );
 }
 
-function getStatusClass(status: string): string {
-  switch (status.toLowerCase()) {
-    case "confirmed":
-      return "bg-blue-100 text-blue-800";
-    case "pending":
-      return "bg-yellow-100 text-yellow-800";
-    case "completed":
-      return "bg-green-100 text-green-800";
-    case "cancelled":
-      return "bg-red-100 text-red-800";
-    case "in-progress":
-      return "bg-purple-100 text-purple-800";
-    default:
-      return "bg-gray-100 text-gray-800";
-  }
-}
+

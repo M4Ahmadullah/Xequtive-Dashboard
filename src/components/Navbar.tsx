@@ -10,46 +10,24 @@ export function Navbar() {
   const [user, setUser] = useState<User | null>(null);
   const router = useRouter();
 
-  // Fetch user data from localStorage and verify with backend
+  // Fetch user data from backend
   useEffect(() => {
     const getUserInfo = async () => {
       try {
-        // First try to get from localStorage for quick UI rendering
-        const userInfoStr = localStorage.getItem("userInfo");
-        let userInfo = null;
-
-        if (userInfoStr) {
-          try {
-            userInfo = JSON.parse(userInfoStr);
-            // Create a User object from the localStorage data for initial state
-            const userData: User = {
-              uid: userInfo.uid,
-              email: userInfo.email,
-              displayName: userInfo.displayName,
-              role: userInfo.role as "admin" | "user",
-            };
-            setUser(userData);
-          } catch (e) {
-            console.error("Error parsing cached user info:", e);
-          }
-        }
-
-        // Then verify with backend (source of truth)
+        // Check authentication with backend
         const response = await authAPI.checkAdminStatus();
-
+        
         if (response.success && response.data) {
-          // Update with verified data from backend
           setUser(response.data);
-          // Update localStorage with latest data
-          localStorage.setItem("userInfo", JSON.stringify(response.data));
         } else {
-          // If backend check fails, remove local data and redirect to login
+          // Authentication failed, redirect to login
           localStorage.removeItem("userInfo");
           router.push("/auth/signin");
         }
       } catch (error) {
         console.error("Error getting user info:", error);
         localStorage.removeItem("userInfo");
+        router.push("/auth/signin");
       }
     };
 

@@ -202,7 +202,7 @@ export default function DashboardPage() {
           <CardContent>
             <div className="flex justify-between items-end">
               <div className="text-3xl font-bold text-white">
-                {overview?.revenue?.currency || "$"}
+                {overview?.revenue?.currency || "£"}
                 {overview?.revenue?.total
                   ? overview.revenue.total.toLocaleString()
                   : "0"}
@@ -470,12 +470,15 @@ function getStatusColor(status: string): string {
 // Helper function to get colors for vehicle types
 function getVehicleColor(type: string): string {
   const colors: Record<string, string> = {
-    sedan: "#6366F1", // Indigo
-    suv: "#8B5CF6", // Purple
-    luxury: "#A855F7", // Purple/Violet
-    sports: "#EC4899", // Pink
-    van: "#9333EA", // Purple/Violet
+    "Standard Saloon": "#6366F1", // Indigo
+    "Executive Saloon": "#8B5CF6", // Purple
+    "VIP-Saloon": "#A855F7", // Purple/Violet
+    "MPV-6 Seater": "#EC4899", // Pink
+    "MPV-8 Seater": "#9333EA", // Purple/Violet
+    "Executive MPV-8": "#3B82F6", // Blue
+    "VIP-SUV/MPV": "#10B981", // Emerald
+    Estate: "#F59E0B", // Amber
   };
 
-  return colors[type.toLowerCase()] || "#6B7280"; // Default gray
+  return colors[type] || "#6B7280"; // Default gray
 }

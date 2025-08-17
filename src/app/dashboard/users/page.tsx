@@ -1,10 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { usersAPI } from "@/lib/api";
+
 import { User } from "@/types/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import Link from "next/link";
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -18,6 +17,8 @@ export default function UsersPage() {
     currentPage: 1,
     limit: 20,
   });
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const fetchUsers = useCallback(
     async (params?: { page?: number; role?: string; query?: string }) => {
@@ -25,16 +26,20 @@ export default function UsersPage() {
       setError(null);
 
       try {
-        const response = await usersAPI.getAll({
-          page: params?.page || pagination.currentPage,
-          limit: pagination.limit,
-          role: params?.role || role,
-          query: params?.query || searchQuery,
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/users?page=${params?.page || pagination.currentPage}&limit=${pagination.limit}&role=${params?.role || role || ""}&query=${params?.query || searchQuery || ""}`, {
+          credentials: 'include'
         });
 
-        if (response.success && response.data) {
-          setUsers(response.data.users || []);
-          const pagination = response.data.pagination;
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const apiResponse = { success: data.success, data: data.data, error: data.error };
+
+        if (apiResponse.success && apiResponse.data) {
+          setUsers(apiResponse.data.users || []);
+          const pagination = apiResponse.data.pagination;
           if (pagination) {
             setPagination((prev) => ({
               ...prev,
@@ -43,7 +48,7 @@ export default function UsersPage() {
             }));
           }
         } else {
-          setError(response.error?.message || "Failed to load users");
+          setError(apiResponse.error?.message || "Failed to load users");
         }
       } catch {
         setError("An error occurred while fetching users");
@@ -74,6 +79,16 @@ export default function UsersPage() {
 
   const handlePageChange = (page: number) => {
     setPagination((prev) => ({ ...prev, currentPage: page }));
+  };
+
+  const openUserModal = (user: User) => {
+    setSelectedUser(user);
+    setIsModalOpen(true);
+  };
+
+  const closeUserModal = () => {
+    setSelectedUser(null);
+    setIsModalOpen(false);
   };
 
   if (loading && users.length === 0) {
@@ -118,11 +133,11 @@ export default function UsersPage() {
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-6 max-w-7xl mx-auto bg-gray-950 min-h-screen">
       <div className="flex justify-between items-center mb-8">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Users</h1>
-          <p className="text-gray-600">
+          <h1 className="text-3xl font-bold text-white">Users</h1>
+          <p className="text-gray-300">
             Manage and view all users. This dashboard allows you to search for
             users, filter by role, and view detailed user information.
           </p>
@@ -136,11 +151,11 @@ export default function UsersPage() {
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search users..."
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            className="flex-1 px-4 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-gray-800 text-white placeholder-gray-400"
           />
           <button
             type="submit"
-            className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+            className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
           >
             Search
           </button>
@@ -151,8 +166,8 @@ export default function UsersPage() {
             onClick={() => handleRoleFilter(undefined)}
             className={`px-4 py-2 rounded-md ${
               role === undefined
-                ? "bg-indigo-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                ? "bg-purple-600 text-white"
+                : "bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-600"
             }`}
           >
             All
@@ -161,8 +176,8 @@ export default function UsersPage() {
             onClick={() => handleRoleFilter("admin")}
             className={`px-4 py-2 rounded-md ${
               role === "admin"
-                ? "bg-indigo-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                ? "bg-purple-600 text-white"
+                : "bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-600"
             }`}
           >
             Admins
@@ -171,8 +186,8 @@ export default function UsersPage() {
             onClick={() => handleRoleFilter("user")}
             className={`px-4 py-2 rounded-md ${
               role === "user"
-                ? "bg-indigo-600 text-white"
-                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                ? "bg-purple-600 text-white"
+                : "bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-600"
             }`}
           >
             Users
@@ -188,14 +203,14 @@ export default function UsersPage() {
         <div className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {users.map((user) => (
-              <Card key={user.uid} className="overflow-hidden">
-                <CardHeader className="bg-gray-50">
+              <Card key={user.uid} className="overflow-hidden bg-gradient-to-br from-gray-900/80 to-gray-800/60 border border-gray-700 hover:border-purple-500/50 hover:shadow-xl transition-all duration-300 group">
+                <CardHeader className="bg-gradient-to-r from-purple-900/50 to-purple-800/30 border-b border-purple-700/50">
                   <div className="flex justify-between items-start">
-                    <CardTitle className="text-lg">
+                    <CardTitle className="text-lg text-white group-hover:text-purple-300 transition-colors">
                       {user.displayName || user.email}
                     </CardTitle>
                     <div
-                      className={`px-3 py-1 rounded-full text-sm ${getRoleColor(
+                      className={`px-3 py-1 rounded-full text-sm font-medium ${getRoleColor(
                         user.role
                       )}`}
                     >
@@ -203,37 +218,37 @@ export default function UsersPage() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="pt-4">
-                  <div className="space-y-2">
-                    <div>
-                      <p className="text-sm text-gray-500">Email</p>
-                      <p className="font-medium">{user.email}</p>
+                <CardContent className="pt-6">
+                  <div className="space-y-4">
+                    <div className="bg-gray-800/30 p-3 rounded-lg border border-gray-700/50">
+                      <p className="text-xs text-purple-400 mb-1 font-semibold uppercase tracking-wide">Email</p>
+                      <p className="font-semibold text-white">{user.email}</p>
                     </div>
 
                     {user.phone && (
-                      <div>
-                        <p className="text-sm text-gray-500">Phone</p>
-                        <p className="font-medium">{user.phone}</p>
+                      <div className="bg-gray-800/30 p-3 rounded-lg border border-gray-700/50">
+                        <p className="text-xs text-blue-400 mb-1 font-semibold uppercase tracking-wide">Phone</p>
+                        <p className="font-semibold text-white">{user.phone}</p>
                       </div>
                     )}
 
                     {user.createdAt && (
-                      <div>
-                        <p className="text-sm text-gray-500">Joined</p>
-                        <p className="font-medium">
+                      <div className="bg-gray-800/30 p-3 rounded-lg border border-gray-700/50">
+                        <p className="text-xs text-emerald-400 mb-1 font-semibold uppercase tracking-wide">Joined</p>
+                        <p className="font-semibold text-white">
                           {new Date(user.createdAt).toLocaleDateString()}
                         </p>
                       </div>
                     )}
                   </div>
 
-                  <div className="flex justify-end mt-4">
-                    <Link
-                      href={`/dashboard/users/${user.uid}`}
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+                  <div className="flex justify-end mt-6">
+                    <button
+                      onClick={() => openUserModal(user)}
+                      className="px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-gray-950 transition-all duration-300 transform hover:scale-105 font-medium"
                     >
                       View Details
-                    </Link>
+                    </button>
                   </div>
                 </CardContent>
               </Card>
@@ -264,6 +279,114 @@ export default function UsersPage() {
       ) : (
         <div className="text-center p-8">
           <p className="text-lg text-gray-600 mb-4">No users found</p>
+        </div>
+      )}
+
+      {/* User Details Modal */}
+      {isModalOpen && selectedUser && (
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-gray-900 rounded-2xl border border-gray-700 w-[95vw] h-[95vh] overflow-hidden flex flex-col">
+            {/* Modal Header */}
+            <div className="bg-gradient-to-r from-purple-900/50 to-purple-800/50 border-b border-purple-700/50 p-6">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h2 className="text-2xl font-bold text-white">
+                    {selectedUser.displayName || selectedUser.email}
+                  </h2>
+                  <p className="text-purple-300 mt-1">
+                    User ID: {selectedUser.uid}
+                  </p>
+                </div>
+                <button
+                  onClick={closeUserModal}
+                  className="text-gray-400 hover:text-white text-2xl font-bold p-2 hover:bg-gray-800 rounded-lg transition-colors"
+                >
+                  ×
+                </button>
+              </div>
+              <div className="mt-4">
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getRoleColor(selectedUser.role)}`}>
+                  {selectedUser.role}
+                </span>
+              </div>
+            </div>
+
+            {/* Modal Content */}
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Basic Information */}
+                <Card className="bg-gray-800/50 border-gray-700">
+                  <CardHeader>
+                    <CardTitle className="text-purple-300">Basic Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div>
+                      <label className="text-sm text-gray-400">Full Name</label>
+                      <p className="text-white font-medium">{selectedUser.displayName || "Not provided"}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-400">Email</label>
+                      <p className="text-white font-medium">{selectedUser.email}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-400">Phone</label>
+                      <p className="text-white font-medium">{selectedUser.phone || "Not provided"}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-400">Role</label>
+                      <p className="text-white font-medium">{selectedUser.role}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Account Details */}
+                <Card className="bg-gray-800/50 border-gray-700">
+                  <CardHeader>
+                    <CardTitle className="text-blue-300">Account Details</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    <div>
+                      <label className="text-sm text-gray-400">User ID</label>
+                      <p className="text-white font-medium font-mono text-sm">{selectedUser.uid}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-400">Created At</label>
+                      <p className="text-white font-medium">
+                        {selectedUser.createdAt ? new Date(selectedUser.createdAt).toLocaleString() : "Unknown"}
+                      </p>
+                    </div>
+                    <div>
+                      <label className="text-sm text-gray-400">Last Booking Date</label>
+                      <p className="text-white font-medium">
+                        {selectedUser.lastBookingDate ? new Date(selectedUser.lastBookingDate).toLocaleDateString() : "No bookings yet"}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Booking Statistics */}
+                <Card className="bg-gray-800/50 border-gray-700 lg:col-span-2">
+                  <CardHeader>
+                    <CardTitle className="text-emerald-300">Booking Statistics</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                      <div>
+                        <label className="text-sm text-gray-400">Total Bookings</label>
+                        <p className="text-white font-medium text-lg">{selectedUser.bookingsCount || 0}</p>
+                      </div>
+                      <div>
+                        <label className="text-sm text-gray-400">Total Spent</label>
+                        <p className="text-white font-medium text-lg">
+                          £{selectedUser.totalSpent?.toLocaleString() || 0}
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
