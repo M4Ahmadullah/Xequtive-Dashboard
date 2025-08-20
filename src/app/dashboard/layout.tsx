@@ -117,8 +117,8 @@ export default function DashboardLayout({
           {/* Main content */}
           <div className="flex-1 flex flex-col overflow-hidden">
             <Navbar />
-            <main className="flex-1 overflow-y-auto bg-gradient-to-b from-gray-950 to-gray-900 p-4 md:p-6">
-              <div className="max-w-7xl mx-auto">{children}</div>
+            <main className="flex-1 overflow-y-auto bg-gray-950 p-4 md:p-6">
+              {children}
             </main>
           </div>
         </div>

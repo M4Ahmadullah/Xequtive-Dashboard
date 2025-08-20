@@ -1,85 +1,50 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-
+import { useState, useEffect } from "react";
 import { User } from "@/types/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { FaUserAlt, FaEnvelope, FaPhone, FaCalendarAlt, FaSearch } from "react-icons/fa";
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [role, setRole] = useState<string | undefined>(undefined);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [pagination, setPagination] = useState({
-    total: 0,
-    pages: 0,
-    currentPage: 1,
-    limit: 20,
-  });
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeFilter, setActiveFilter] = useState("all");
 
-  const fetchUsers = useCallback(
-    async (params?: { page?: number; role?: string; query?: string }) => {
+  useEffect(() => {
+    async function fetchUsers() {
       setLoading(true);
       setError(null);
 
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/users?page=${params?.page || pagination.currentPage}&limit=${pagination.limit}&role=${params?.role || role || ""}&query=${params?.query || searchQuery || ""}`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/users`, {
           credentials: 'include'
         });
 
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        const apiResponse = { success: data.success, data: data.data, error: data.error };
-
-        if (apiResponse.success && apiResponse.data) {
-          setUsers(apiResponse.data.users || []);
-          const pagination = apiResponse.data.pagination;
-          if (pagination) {
-            setPagination((prev) => ({
-              ...prev,
-              total: pagination.total || 0,
-              pages: pagination.pages || 0,
-            }));
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data?.users) {
+            setUsers(data.data.users);
+          } else {
+            setError('Failed to load users');
           }
         } else {
-          setError(apiResponse.error?.message || "Failed to load users");
+          setError('Failed to fetch users');
         }
-      } catch {
-        setError("An error occurred while fetching users");
+      } catch (error) {
+        console.error('Error fetching users:', error);
+        setError('Failed to fetch users');
       } finally {
         setLoading(false);
       }
-    },
-    [pagination.currentPage, pagination.limit, role, searchQuery]
-  );
+    }
 
-  useEffect(() => {
-    fetchUsers({
-      page: pagination?.currentPage,
-      role: role || undefined,
-      query: searchQuery || undefined,
-    });
-  }, [pagination?.currentPage, role, searchQuery, fetchUsers]);
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    fetchUsers({ page: 1 });
-  };
-
-  const handleRoleFilter = (selectedRole: string | undefined) => {
-    setRole(selectedRole);
-    setPagination((prev) => ({ ...prev, currentPage: 1 }));
-  };
-
-  const handlePageChange = (page: number) => {
-    setPagination((prev) => ({ ...prev, currentPage: page }));
-  };
+    fetchUsers();
+  }, []);
 
   const openUserModal = (user: User) => {
     setSelectedUser(user);
@@ -87,254 +52,283 @@ export default function UsersPage() {
   };
 
   const closeUserModal = () => {
-    setSelectedUser(null);
     setIsModalOpen(false);
+    setSelectedUser(null);
   };
 
-  if (loading && users.length === 0) {
+  const getRoleColor = (role: string) => {
+    switch (role.toLowerCase()) {
+      case 'admin':
+        return 'bg-gradient-to-r from-purple-600 to-purple-700 text-white border-purple-500';
+      case 'user':
+        return 'bg-gradient-to-r from-blue-600 to-blue-700 text-white border-blue-500';
+      case 'premium':
+        return 'bg-gradient-to-r from-emerald-600 to-emerald-700 text-white border-emerald-500';
+      case 'vip':
+        return 'bg-gradient-to-r from-amber-600 to-amber-700 text-white border-amber-500';
+      default:
+        return 'bg-gradient-to-r from-gray-600 to-gray-700 text-white border-gray-500';
+    }
+  };
+
+  const getRoleIcon = (role: string) => {
+    switch (role.toLowerCase()) {
+      case 'admin':
+        return '👑';
+      case 'user':
+        return '👤';
+      case 'premium':
+        return '⭐';
+      case 'vip':
+        return '💎';
+      default:
+        return '👤';
+    }
+  };
+
+  const filteredUsers = users.filter(user => {
+    if (activeFilter !== "all" && user.role !== activeFilter) return false;
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      return (
+        user.displayName?.toLowerCase().includes(query) ||
+        user.email.toLowerCase().includes(query) ||
+        user.role.toLowerCase().includes(query)
+      );
+    }
+    return true;
+  });
+
+  if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="w-12 h-12 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin"></div>
+      <div className="flex justify-center items-center h-screen bg-gray-950">
+        <div className="w-16 h-16 border-4 border-gray-800 border-t-purple-600 rounded-full animate-spin"></div>
       </div>
     );
   }
 
-  if (error && users.length === 0) {
+  if (error) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4">
-        <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4 w-full max-w-3xl">
-          <div className="flex">
-            <div className="flex-shrink-0">
-              <svg
-                className="h-5 w-5 text-red-400"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
-            <div className="ml-3">
-              <p className="text-sm text-red-700">{error}</p>
-            </div>
+      <div className="flex justify-center items-center h-screen bg-gray-950">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-red-600/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <FaUserAlt className="h-8 w-8 text-red-500" />
           </div>
+          <h2 className="text-xl font-semibold text-white mb-2">Error Loading Users</h2>
+          <p className="text-gray-400">{error}</p>
         </div>
-        <button
-          onClick={() => fetchUsers()}
-          className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-        >
-          Retry
-        </button>
       </div>
     );
   }
 
   return (
-    <div className="p-6 max-w-7xl mx-auto bg-gray-950 min-h-screen">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold text-white">Users</h1>
-          <p className="text-gray-300">
-            Manage and view all users. This dashboard allows you to search for
-            users, filter by role, and view detailed user information.
-          </p>
-        </div>
-      </div>
-
-      <div className="mb-6 flex flex-col md:flex-row gap-4">
-        <form onSubmit={handleSearch} className="flex flex-1 gap-2">
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search users..."
-            className="flex-1 px-4 py-2 border border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 bg-gray-800 text-white placeholder-gray-400"
-          />
-          <button
-            type="submit"
-            className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
-          >
-            Search
-          </button>
-        </form>
-
-        <div className="flex gap-2">
-          <button
-            onClick={() => handleRoleFilter(undefined)}
-            className={`px-4 py-2 rounded-md ${
-              role === undefined
-                ? "bg-purple-600 text-white"
-                : "bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-600"
-            }`}
-          >
-            All
-          </button>
-          <button
-            onClick={() => handleRoleFilter("admin")}
-            className={`px-4 py-2 rounded-md ${
-              role === "admin"
-                ? "bg-purple-600 text-white"
-                : "bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-600"
-            }`}
-          >
-            Admins
-          </button>
-          <button
-            onClick={() => handleRoleFilter("user")}
-            className={`px-4 py-2 rounded-md ${
-              role === "user"
-                ? "bg-purple-600 text-white"
-                : "bg-gray-800 text-gray-300 hover:bg-gray-700 border border-gray-600"
-            }`}
-          >
-            Users
-          </button>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="flex justify-center p-8">
-          <div className="w-10 h-10 border-4 border-indigo-500 rounded-full border-t-transparent animate-spin"></div>
-        </div>
-      ) : users && users.length > 0 ? (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {users.map((user) => (
-              <Card key={user.uid} className="overflow-hidden bg-gradient-to-br from-gray-900/80 to-gray-800/60 border border-gray-700 hover:border-purple-500/50 hover:shadow-xl transition-all duration-300 group">
-                <CardHeader className="bg-gradient-to-r from-purple-900/50 to-purple-800/30 border-b border-purple-700/50">
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-lg text-white group-hover:text-purple-300 transition-colors">
-                      {user.displayName || user.email}
-                    </CardTitle>
-                    <div
-                      className={`px-3 py-1 rounded-full text-sm font-medium ${getRoleColor(
-                        user.role
-                      )}`}
-                    >
-                      {user.role}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <div className="space-y-4">
-                    <div className="bg-gray-800/30 p-3 rounded-lg border border-gray-700/50">
-                      <p className="text-xs text-purple-400 mb-1 font-semibold uppercase tracking-wide">Email</p>
-                      <p className="font-semibold text-white">{user.email}</p>
-                    </div>
-
-                    {user.phone && (
-                      <div className="bg-gray-800/30 p-3 rounded-lg border border-gray-700/50">
-                        <p className="text-xs text-blue-400 mb-1 font-semibold uppercase tracking-wide">Phone</p>
-                        <p className="font-semibold text-white">{user.phone}</p>
-                      </div>
-                    )}
-
-                    {user.createdAt && (
-                      <div className="bg-gray-800/30 p-3 rounded-lg border border-gray-700/50">
-                        <p className="text-xs text-emerald-400 mb-1 font-semibold uppercase tracking-wide">Joined</p>
-                        <p className="font-semibold text-white">
-                          {new Date(user.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex justify-end mt-6">
-                    <button
-                      onClick={() => openUserModal(user)}
-                      className="px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-gray-950 transition-all duration-300 transform hover:scale-105 font-medium"
-                    >
-                      View Details
-                    </button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+    <div className="w-full">
+      {/* Enhanced Header */}
+      <div className="mb-8">
+        <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-purple-900/40 via-blue-900/40 to-purple-900/40 border border-purple-700/30 backdrop-blur-sm">
+          <div className="absolute inset-0 bg-gradient-to-r from-purple-600/10 via-blue-600/10 to-purple-600/10 animate-pulse"></div>
+          <div className="relative p-8">
+            <h1 className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-white via-purple-100 to-blue-100 bg-clip-text text-transparent mb-3">
+              User Management 👥
+            </h1>
+            <p className="text-lg text-gray-300 max-w-2xl">
+              Manage and monitor all user accounts. View detailed profiles, track activity, and maintain user relationships.
+            </p>
           </div>
-
-          {/* Pagination */}
-          {pagination && pagination.pages > 1 && (
-            <div className="flex justify-center mt-6 gap-2">
-              {Array.from({ length: pagination.pages }, (_, i) => i + 1).map(
-                (page) => (
-                  <button
-                    key={page}
-                    onClick={() => handlePageChange(page)}
-                    className={`px-4 py-2 rounded-md ${
-                      page === pagination.currentPage
-                        ? "bg-indigo-600 text-white"
-                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }`}
-                  >
-                    {page}
-                  </button>
-                )
-              )}
-            </div>
-          )}
         </div>
-      ) : (
-        <div className="text-center p-8">
-          <p className="text-lg text-gray-600 mb-4">No users found</p>
+      </div>
+
+      {/* Enhanced Search and Filters */}
+      <div className="mb-8 flex flex-col md:flex-row gap-6">
+        <div className="flex-1">
+          <div className="relative group">
+            <input
+              type="text"
+              placeholder="Search users by name, email, or role..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-6 py-4 bg-gray-800/50 border border-gray-600 text-white placeholder-gray-400 rounded-2xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all duration-300 group-hover:border-gray-500"
+            />
+            <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+              <FaSearch className="w-5 h-5 text-gray-400 group-hover:text-purple-400 transition-colors duration-300" />
+            </div>
+          </div>
+        </div>
+        <div className="flex gap-3">
+          <Button
+            onClick={() => setActiveFilter("all")}
+            className={`px-6 py-4 rounded-2xl transition-all duration-300 transform hover:scale-105 ${
+              activeFilter === "all"
+                ? "bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg"
+                : "bg-gray-800/50 text-gray-300 hover:bg-gray-700/50 border border-gray-600"
+            }`}
+          >
+            All ({users.length})
+          </Button>
+          <Button
+            onClick={() => setActiveFilter("admin")}
+            className={`px-6 py-4 rounded-2xl transition-all duration-300 transform hover:scale-105 ${
+              activeFilter === "admin"
+                ? "bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg"
+                : "bg-gray-800/50 text-gray-300 hover:bg-gray-700/50 border border-gray-600"
+            }`}
+          >
+            Admins ({users.filter(u => u.role === "admin").length})
+          </Button>
+          <Button
+            onClick={() => setActiveFilter("user")}
+            className={`px-6 py-4 rounded-2xl transition-all duration-300 transform hover:scale-105 ${
+              activeFilter === "user"
+                ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg"
+                : "bg-gray-800/50 text-gray-300 hover:bg-gray-700/50 border border-gray-600"
+            }`}
+          >
+            Users ({users.filter(u => u.role === "user").length})
+          </Button>
+        </div>
+      </div>
+
+      {/* Enhanced Users Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {filteredUsers.map((user) => (
+          <Card key={user.uid} className="group bg-gradient-to-br from-gray-900/80 to-gray-800/60 border border-gray-700 hover:border-purple-500/50 hover:shadow-2xl transition-all duration-700 transform hover:-translate-y-2 hover:scale-105 overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            <CardHeader className="bg-gradient-to-r from-purple-900/50 to-purple-800/30 border-b border-purple-700/50 relative">
+              <div className="flex justify-between items-start">
+                <CardTitle className="text-lg text-white group-hover:text-purple-300 transition-colors duration-300 flex items-center gap-2">
+                  <span className="text-2xl">{getRoleIcon(user.role)}</span>
+                  {user.displayName || user.email}
+                </CardTitle>
+                <div className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-300 ${getRoleColor(user.role)}`}>
+                  {user.role}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="pt-6 relative">
+              <div className="space-y-4">
+                <div className="bg-gray-800/30 p-4 rounded-xl border border-gray-700/50 hover:border-purple-500/50 transition-all duration-300">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+                      <FaEnvelope className="h-4 w-4 text-white" />
+                    </div>
+                    <p className="text-xs text-purple-400 font-semibold uppercase tracking-wide">Email</p>
+                  </div>
+                  <p className="font-semibold text-white text-sm break-all">{user.email}</p>
+                </div>
+
+                {user.phone && (
+                  <div className="bg-gray-800/30 p-4 rounded-xl border border-gray-700/50 hover:border-blue-500/50 transition-all duration-300">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center">
+                        <FaPhone className="h-4 w-4 text-white" />
+                      </div>
+                      <p className="text-xs text-blue-400 font-semibold uppercase tracking-wide">Phone</p>
+                    </div>
+                    <p className="font-semibold text-white text-sm">{user.phone}</p>
+                  </div>
+                )}
+
+                <div className="bg-gray-800/30 p-4 rounded-xl border border-gray-700/50 hover:border-emerald-500/50 transition-all duration-300">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                      <FaCalendarAlt className="h-4 w-4 text-white" />
+                    </div>
+                    <p className="text-xs text-emerald-400 font-semibold uppercase tracking-wide">Member Since</p>
+                  </div>
+                  <p className="font-semibold text-white text-sm">
+                    {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+                  </p>
+                </div>
+
+                <div className="bg-gray-800/30 p-4 rounded-xl border border-gray-700/50 hover:border-orange-500/50 transition-all duration-300">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
+                      <FaUserAlt className="h-4 w-4 text-white" />
+                    </div>
+                    <p className="text-xs text-orange-400 font-semibold uppercase tracking-wide">Account Status</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span className="text-white text-sm font-medium">Active</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex justify-end mt-6">
+                <button
+                  onClick={() => openUserModal(user)}
+                  className="px-8 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-gray-900 transition-all duration-300 transform hover:scale-105 font-medium shadow-lg hover:shadow-xl"
+                >
+                  View Details
+                </button>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {filteredUsers.length === 0 && (
+        <div className="text-center py-16">
+          <div className="w-24 h-24 bg-gray-800/50 rounded-full flex items-center justify-center mx-auto mb-6">
+            <FaUserAlt className="h-12 w-12 text-gray-400" />
+          </div>
+          <h3 className="text-2xl font-semibold text-white mb-2">No users found</h3>
+          <p className="text-gray-400 text-lg">
+            {searchQuery ? `No users match "${searchQuery}"` : `No ${activeFilter === "all" ? "" : activeFilter} users available`}
+          </p>
         </div>
       )}
 
-      {/* User Details Modal */}
+      {/* Enhanced User Details Modal */}
       {isModalOpen && selectedUser && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-gray-900 rounded-2xl border border-gray-700 w-[95vw] h-[95vh] overflow-hidden flex flex-col">
-            {/* Modal Header */}
-            <div className="bg-gradient-to-r from-purple-900/50 to-purple-800/50 border-b border-purple-700/50 p-6">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h2 className="text-2xl font-bold text-white">
-                    {selectedUser.displayName || selectedUser.email}
-                  </h2>
-                  <p className="text-purple-300 mt-1">
-                    User ID: {selectedUser.uid}
-                  </p>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="w-[95vw] h-[95vh] bg-gray-900 rounded-3xl border border-gray-700 overflow-hidden shadow-2xl">
+            <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-gradient-to-r from-gray-800/50 to-gray-700/50">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
+                  <span className="text-2xl">{getRoleIcon(selectedUser.role)}</span>
                 </div>
-                <button
-                  onClick={closeUserModal}
-                  className="text-gray-400 hover:text-white text-2xl font-bold p-2 hover:bg-gray-800 rounded-lg transition-colors"
-                >
-                  ×
-                </button>
+                <div>
+                  <h2 className="text-2xl font-bold text-white">User Profile</h2>
+                  <p className="text-gray-400">{selectedUser.role} Account</p>
+                </div>
               </div>
-              <div className="mt-4">
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getRoleColor(selectedUser.role)}`}>
-                  {selectedUser.role}
-                </span>
-              </div>
+              <button
+                onClick={closeUserModal}
+                className="w-10 h-10 bg-gray-800 hover:bg-gray-700 rounded-xl flex items-center justify-center text-gray-400 hover:text-white transition-all duration-300"
+              >
+                ✕
+              </button>
             </div>
-
-            {/* Modal Content */}
+            
             <div className="flex-1 overflow-y-auto p-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Basic Information */}
                 <Card className="bg-gray-800/50 border-gray-700">
                   <CardHeader>
-                    <CardTitle className="text-purple-300">Basic Information</CardTitle>
+                    <CardTitle className="text-purple-300 flex items-center gap-2">
+                      <FaUserAlt className="h-5 w-5" />
+                      Basic Information
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div>
-                      <label className="text-sm text-gray-400">Full Name</label>
-                      <p className="text-white font-medium">{selectedUser.displayName || "Not provided"}</p>
+                  <CardContent className="space-y-4">
+                    <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                      <label className="text-sm text-gray-400 mb-2 block">Full Name</label>
+                      <p className="text-white font-semibold text-lg">{selectedUser.displayName || 'Not provided'}</p>
                     </div>
-                    <div>
-                      <label className="text-sm text-gray-400">Email</label>
-                      <p className="text-white font-medium">{selectedUser.email}</p>
+                    <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                      <label className="text-sm text-gray-400 mb-2 block">Email Address</label>
+                      <p className="text-white font-semibold text-lg break-all">{selectedUser.email}</p>
                     </div>
-                    <div>
-                      <label className="text-sm text-gray-400">Phone</label>
-                      <p className="text-white font-medium">{selectedUser.phone || "Not provided"}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-400">Role</label>
-                      <p className="text-white font-medium">{selectedUser.role}</p>
+                    {selectedUser.phone && (
+                      <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                        <label className="text-sm text-gray-400 mb-2 block">Phone Number</label>
+                        <p className="text-white font-semibold text-lg">{selectedUser.phone}</p>
+                      </div>
+                    )}
+                    <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                      <label className="text-sm text-gray-400 mb-2 block">User ID</label>
+                      <p className="text-white font-mono text-sm">{selectedUser.uid}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -342,23 +336,41 @@ export default function UsersPage() {
                 {/* Account Details */}
                 <Card className="bg-gray-800/50 border-gray-700">
                   <CardHeader>
-                    <CardTitle className="text-blue-300">Account Details</CardTitle>
+                    <CardTitle className="text-blue-300 flex items-center gap-2">
+                      <FaEnvelope className="h-5 w-5" />
+                      Account Details
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div>
-                      <label className="text-sm text-gray-400">User ID</label>
-                      <p className="text-white font-medium font-mono text-sm">{selectedUser.uid}</p>
+                  <CardContent className="space-y-4">
+                    <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                      <label className="text-sm text-gray-400 mb-2 block">Account Role</label>
+                      <div className="flex items-center gap-3">
+                        <span className={`px-4 py-2 rounded-full text-sm font-semibold border ${getRoleColor(selectedUser.role)}`}>
+                          {getRoleIcon(selectedUser.role)} {selectedUser.role}
+                        </span>
+                      </div>
                     </div>
-                    <div>
-                      <label className="text-sm text-gray-400">Created At</label>
-                      <p className="text-white font-medium">
-                        {selectedUser.createdAt ? new Date(selectedUser.createdAt).toLocaleString() : "Unknown"}
+                    <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                      <label className="text-sm text-gray-400 mb-2 block">Account Status</label>
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+                        <span className="text-green-400 font-semibold">Active</span>
+                      </div>
+                    </div>
+                    <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                      <label className="text-sm text-gray-400 mb-2 block">Member Since</label>
+                      <p className="text-white font-semibold">
+                        {selectedUser.createdAt ? new Date(selectedUser.createdAt).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        }) : 'N/A'}
                       </p>
                     </div>
-                    <div>
-                      <label className="text-sm text-gray-400">Last Booking Date</label>
-                      <p className="text-white font-medium">
-                        {selectedUser.lastBookingDate ? new Date(selectedUser.lastBookingDate).toLocaleDateString() : "No bookings yet"}
+                    <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                      <label className="text-sm text-gray-400 mb-2 block">Last Activity</label>
+                      <p className="text-white font-semibold">
+                        {selectedUser.lastLogin ? new Date(selectedUser.lastLogin).toLocaleDateString() : 'N/A'}
                       </p>
                     </div>
                   </CardContent>
@@ -367,19 +379,36 @@ export default function UsersPage() {
                 {/* Booking Statistics */}
                 <Card className="bg-gray-800/50 border-gray-700 lg:col-span-2">
                   <CardHeader>
-                    <CardTitle className="text-emerald-300">Booking Statistics</CardTitle>
+                    <CardTitle className="text-emerald-300 flex items-center gap-2">
+                      <FaCalendarAlt className="h-5 w-5" />
+                      Booking Statistics
+                    </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                      <div>
-                        <label className="text-sm text-gray-400">Total Bookings</label>
-                        <p className="text-white font-medium text-lg">{selectedUser.bookingsCount || 0}</p>
+                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                      <div className="bg-gradient-to-br from-blue-900/30 to-blue-800/20 p-4 rounded-xl border border-blue-700/50">
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-blue-300 mb-1">0</div>
+                          <p className="text-blue-400 text-sm">Total Bookings</p>
+                        </div>
                       </div>
-                      <div>
-                        <label className="text-sm text-gray-400">Total Spent</label>
-                        <p className="text-white font-medium text-lg">
-                          £{selectedUser.totalSpent?.toLocaleString() || 0}
-                        </p>
+                      <div className="bg-gradient-to-br from-green-900/30 to-green-800/20 p-4 rounded-xl border border-green-700/50">
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-green-300 mb-1">0</div>
+                          <p className="text-green-400 text-sm">Completed</p>
+                        </div>
+                      </div>
+                      <div className="bg-gradient-to-br from-yellow-900/30 to-yellow-800/20 p-4 rounded-xl border border-yellow-700/50">
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-yellow-300 mb-1">0</div>
+                          <p className="text-yellow-400 text-sm">Pending</p>
+                        </div>
+                      </div>
+                      <div className="bg-gradient-to-br from-purple-900/30 to-purple-800/20 p-4 rounded-xl border border-purple-700/50">
+                        <div className="text-center">
+                          <div className="text-2xl font-bold text-purple-300 mb-1">£0</div>
+                          <p className="text-purple-400 text-sm">Total Spent</p>
+                        </div>
                       </div>
                     </div>
                   </CardContent>
@@ -391,15 +420,4 @@ export default function UsersPage() {
       )}
     </div>
   );
-}
-
-function getRoleColor(role: string): string {
-  switch (role.toLowerCase()) {
-    case "admin":
-      return "bg-purple-100 text-purple-800";
-    case "user":
-      return "bg-blue-100 text-blue-800";
-    default:
-      return "bg-gray-100 text-gray-800";
-  }
 }

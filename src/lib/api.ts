@@ -102,7 +102,20 @@ export const authAPI = {
             },
           };
         }
-        throw new Error(`HTTP error! status: ${response.status}`);
+        
+        // Try to get error details from response
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          if (errorData.error?.message) {
+            errorMessage = errorData.error.message;
+          }
+        } catch {
+          // If we can't parse the error response, use the status text
+          errorMessage = response.statusText || `HTTP error! status: ${response.status}`;
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
@@ -134,6 +147,17 @@ export const authAPI = {
       }
     } catch (error) {
       console.error("Login error:", error);
+      
+      if (error instanceof Error) {
+        return {
+          success: false,
+          error: {
+            message: error.message || "Network error. Please try again.",
+            code: "NETWORK_ERROR",
+          },
+        };
+      }
+      
       return {
         success: false,
         error: {
