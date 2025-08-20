@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RevenueAnalytics, TrafficAnalytics } from "@/types/api";
-import { FaChartLine, FaUsers, FaArrowUp, FaArrowDown, FaMinus } from "react-icons/fa";
+import { FaChartLine, FaUsers, FaMinus } from "react-icons/fa";
 
 export default function AnalyticsPage() {
   const [revenueData, setRevenueData] = useState<RevenueAnalytics | null>(null);

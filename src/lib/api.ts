@@ -112,7 +112,7 @@ export const authAPI = {
           }
         } catch {
           // If we can't parse the error response, use the status text
-          errorMessage = response.statusText || `HTTP error! status: ${response.status}`;
+          errorMessage = response.statusText || `There is an HTTP error! status: ${response.status}`;
         }
         
         throw new Error(errorMessage);
