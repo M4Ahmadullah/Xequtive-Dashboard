@@ -25,7 +25,7 @@ export const authAPI = {
   ): Promise<ApiResponse<AuthResponse>> => {
     try {
       // Use the new backend hardcoded login endpoint
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/auth/hardcoded-login`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/auth/hardcoded-login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -112,7 +112,7 @@ export const authAPI = {
 
   logout: async (): Promise<ApiResponse<{ message: string }>> => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/auth/logout`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/auth/logout`, {
         method: 'POST',
         credentials: 'include',
       });
@@ -142,7 +142,7 @@ export const authAPI = {
 
   checkAdminStatus: async (): Promise<ApiResponse<User>> => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/auth/check-admin`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/auth/check-admin`, {
         credentials: 'include',
       });
 
@@ -192,7 +192,7 @@ export const bookingsAPI = {
       if (params?.sort) queryParams.append('sort', params.sort);
       if (params?.order) queryParams.append('order', params.order);
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/bookings?${queryParams}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/bookings?${queryParams}`, {
         credentials: 'include',
       });
 
@@ -224,7 +224,7 @@ export const bookingsAPI = {
       if (params?.page) queryParams.append('page', params.page.toString());
       if (params?.limit) queryParams.append('limit', params.limit.toString());
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/bookings/separated?${queryParams}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/bookings/separated?${queryParams}`, {
         credentials: 'include',
       });
 
@@ -253,7 +253,7 @@ export const bookingsAPI = {
       if (startDate) queryParams.append('startDate', startDate);
       if (endDate) queryParams.append('endDate', endDate);
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/bookings/statistics?${queryParams}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/bookings/statistics?${queryParams}`, {
         credentials: 'include',
       });
 
@@ -284,7 +284,7 @@ export const bookingsAPI = {
       if (status) queryParams.append('status', status);
       if (bookingType) queryParams.append('bookingType', bookingType);
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/bookings/calendar?${queryParams}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/bookings/calendar?${queryParams}`, {
         credentials: 'include',
       });
 
@@ -309,7 +309,7 @@ export const bookingsAPI = {
   // Get booking details
   getBookingDetails: async (id: string): Promise<ApiResponse<BookingDetail>> => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/bookings/${id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/bookings/${id}`, {
         credentials: 'include',
       });
 
@@ -334,7 +334,7 @@ export const bookingsAPI = {
   // Update booking
   updateBooking: async (id: string, updateData: Partial<BookingDetail>): Promise<ApiResponse<{ message: string; updatedFields: string[] }>> => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/bookings/${id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/bookings/${id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -364,7 +364,7 @@ export const bookingsAPI = {
   // Delete booking
   deleteBooking: async (id: string): Promise<ApiResponse<{ message: string; id: string }>> => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/bookings/${id}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/bookings/${id}`, {
         method: 'DELETE',
         credentials: 'include',
       });
@@ -392,7 +392,7 @@ export const bookingsAPI = {
 export const analyticsAPI = {
   getOverview: async (period: string = 'week'): Promise<ApiResponse<AnalyticsOverview>> => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/analytics/overview?period=${period}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/analytics/overview?period=${period}`, {
         credentials: 'include',
       });
 
@@ -421,7 +421,7 @@ export const analyticsAPI = {
       if (endDate) queryParams.append('endDate', endDate);
       if (interval) queryParams.append('interval', interval);
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/analytics/revenue?${queryParams}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/analytics/revenue?${queryParams}`, {
         credentials: 'include',
       });
 
@@ -450,7 +450,7 @@ export const analyticsAPI = {
       if (endDate) queryParams.append('endDate', endDate);
       if (interval) queryParams.append('interval', interval);
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/analytics/bookings?${queryParams}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/analytics/bookings?${queryParams}`, {
         credentials: 'include',
       });
 
@@ -479,7 +479,7 @@ export const analyticsAPI = {
       if (endDate) queryParams.append('endDate', endDate);
       if (interval) queryParams.append('interval', interval);
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/analytics/users?${queryParams}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/analytics/users?${queryParams}`, {
         credentials: 'include',
       });
 
@@ -508,7 +508,7 @@ export const analyticsAPI = {
       if (endDate) queryParams.append('endDate', endDate);
       if (interval) queryParams.append('interval', interval);
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/analytics/traffic?${queryParams}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/analytics/traffic?${queryParams}`, {
         credentials: 'include',
       });
 
@@ -541,7 +541,7 @@ export const usersAPI = {
       if (params?.page) queryParams.append('page', params.page.toString());
       if (params?.limit) queryParams.append('limit', params.limit.toString());
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/users?${queryParams}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/users?${queryParams}`, {
         credentials: 'include',
       });
 
@@ -565,7 +565,7 @@ export const usersAPI = {
 
   getUserDetails: async (uid: string): Promise<ApiResponse<{ user: User; recentBookings: Array<{ id: string; pickupDate: string; status: string; amount: number; vehicleType: string }> }>> => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/users/${uid}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/users/${uid}`, {
         credentials: 'include',
       });
 
@@ -589,7 +589,7 @@ export const usersAPI = {
 
   updateUser: async (uid: string, updateData: Partial<User>): Promise<ApiResponse<{ message: string; updatedFields: string[] }>> => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/users/${uid}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/users/${uid}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -618,7 +618,7 @@ export const usersAPI = {
 
   disableUser: async (uid: string): Promise<ApiResponse<{ message: string; uid: string }>> => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/users/${uid}/disable`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/users/${uid}/disable`, {
         method: 'POST',
         credentials: 'include',
       });
@@ -646,7 +646,7 @@ export const usersAPI = {
 export const settingsAPI = {
   getSettings: async (): Promise<ApiResponse<SystemSettings>> => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/settings`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/settings`, {
         credentials: 'include',
       });
 
@@ -670,7 +670,7 @@ export const settingsAPI = {
 
   updateSettings: async (settings: Partial<SystemSettings>): Promise<ApiResponse<{ message: string; updatedFields: string[] }>> => {
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/settings`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/settings`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
@@ -709,7 +709,7 @@ export const logsAPI = {
       if (params?.page) queryParams.append('page', params.page.toString());
       if (params?.limit) queryParams.append('limit', params.limit.toString());
 
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/logs?${queryParams}`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/logs?${queryParams}`, {
         credentials: 'include',
       });
 
