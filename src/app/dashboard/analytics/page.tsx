@@ -4,12 +4,20 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RevenueAnalytics, TrafficAnalytics } from "@/types/api";
 import { FaChartLine, FaUsers, FaMinus } from "react-icons/fa";
+import { analyticsAPI } from "@/lib/api";
 
 export default function AnalyticsPage() {
   const [revenueData, setRevenueData] = useState<RevenueAnalytics | null>(null);
   const [trafficData, setTrafficData] = useState<TrafficAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-GB', {
+      style: 'currency',
+      currency: 'GBP',
+    }).format(amount);
+  };
 
   useEffect(() => {
     async function fetchAnalyticsData() {
@@ -18,32 +26,20 @@ export default function AnalyticsPage() {
 
       try {
         const [revenueResponse, trafficResponse] = await Promise.all([
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/analytics/revenue`, {
-            credentials: 'include'
-          }),
-          fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/analytics/traffic`, {
-            credentials: 'include'
-          })
+          analyticsAPI.getRevenue(),
+          analyticsAPI.getTraffic()
         ]);
 
-        if (revenueResponse.ok && trafficResponse.ok) {
-          const [revenueData, trafficData] = await Promise.all([
-            revenueResponse.json(),
-            trafficResponse.json()
-          ]);
+        if (revenueResponse.success && revenueResponse.data) {
+          setRevenueData(revenueResponse.data);
+        }
 
-          if (revenueData.success && revenueData.data) {
-            setRevenueData(revenueData.data);
-          }
-          if (trafficData.success && trafficData.data) {
-            setTrafficData(trafficData.data);
-          }
-        } else {
-          setError('Failed to fetch analytics data');
+        if (trafficResponse.success && trafficResponse.data) {
+          setTrafficData(trafficResponse.data);
         }
       } catch (error) {
-        console.error('Error fetching analytics:', error);
-        setError('Failed to fetch analytics data');
+        console.error('Error fetching analytics data:', error);
+        setError('Failed to load analytics data');
       } finally {
         setLoading(false);
       }
@@ -51,13 +47,6 @@ export default function AnalyticsPage() {
 
     fetchAnalyticsData();
   }, []);
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-GB', {
-      style: 'currency',
-      currency: 'GBP'
-    }).format(amount);
-  };
 
   if (loading) {
     return (

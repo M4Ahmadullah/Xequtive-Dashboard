@@ -5,6 +5,7 @@ import { User } from "@/types/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { FaUserAlt, FaEnvelope, FaPhone, FaCalendarAlt, FaSearch } from "react-icons/fa";
+import { usersAPI } from "@/lib/api";
 
 export default function UsersPage() {
   const [users, setUsers] = useState<User[]>([]);
@@ -21,19 +22,12 @@ export default function UsersPage() {
       setError(null);
 
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/users`, {
-          credentials: 'include'
-        });
+        const response = await usersAPI.getAllUsers();
 
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.data?.users) {
-            setUsers(data.data.users);
-          } else {
-            setError('Failed to load users');
-          }
+        if (response.success && response.data?.users) {
+          setUsers(response.data.users);
         } else {
-          setError('Failed to fetch users');
+          setError('Failed to load users');
         }
       } catch (error) {
         console.error('Error fetching users:', error);

@@ -48,22 +48,18 @@ export default function SettingsPage() {
         setSettings(response.data);
 
         // Update form states
-        setCompanyName(response.data.companyName || "");
-        setContactEmail(response.data.contactEmail || "");
-        setContactPhone(response.data.contactPhone || "");
-        setBusinessHoursStart(response.data.businessHours?.weekdays?.start || "");
-        setBusinessHoursEnd(response.data.businessHours?.weekdays?.end || "");
+        setCompanyName("Xequtive Cars"); // Default company name
+        setContactEmail("info@xeqcars.com"); // Default contact email
+        setContactPhone("+44 7752 411502"); // Default contact phone
+        setBusinessHoursStart(response.data.businessHours?.weekdays?.start || "06:00");
+        setBusinessHoursEnd(response.data.businessHours?.weekdays?.end || "23:00");
         setBusinessDays(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"]); // Default weekdays
 
         // Pricing settings
-        setBaseRate(response.data.pricing?.baseRate || 0);
-        setCurrency(response.data.pricing?.currency || "GBP");
-        setCongestionCharge(
-          response.data.pricing?.extraFees?.congestionCharge || 0
-        );
-        setDartfordCrossing(
-          response.data.pricing?.extraFees?.dartfordCrossing || 0
-        );
+        setBaseRate(50); // Default base rate
+        setCurrency("GBP");
+        setCongestionCharge(response.data.pricing?.congestionCharge || 8.0);
+        setDartfordCrossing(response.data.pricing?.dartfordCrossing || 4.0);
 
         // Service area settings
         if (response.data.serviceAreas) {
@@ -75,7 +71,7 @@ export default function SettingsPage() {
         // Notification settings
         setEmailNotifications(response.data.notifications?.emailEnabled || false);
         setSmsNotifications(response.data.notifications?.smsEnabled || false);
-        setPushNotifications(response.data.notifications?.pushNotifications || false);
+        setPushNotifications(false); // Not available in new system
       } else {
         setError(response.error?.message || "Failed to load settings");
       }
@@ -97,9 +93,6 @@ export default function SettingsPage() {
     setSuccessMessage(null);
 
     const updatedSettings: Partial<SystemSettings> = {
-      companyName,
-      contactEmail,
-      contactPhone,
       businessHours: {
         timezone: "Europe/London", // Default timezone
         weekdays: {
@@ -121,12 +114,6 @@ export default function SettingsPage() {
           luton: 8.0,
           city: 8.0,
         },
-        baseRate,
-        currency,
-        extraFees: {
-          congestionCharge,
-          dartfordCrossing,
-        },
       },
       serviceAreas: {
         maxDistance,
@@ -136,7 +123,6 @@ export default function SettingsPage() {
       notifications: {
         emailEnabled: emailNotifications,
         smsEnabled: smsNotifications,
-        pushNotifications,
         bookingConfirmations: true,
         statusUpdates: true,
       },

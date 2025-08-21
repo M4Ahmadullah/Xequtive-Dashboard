@@ -1,79 +1,21 @@
-import axios, { AxiosError } from "axios";
-import type {
+import {
   ApiResponse,
   AuthResponse,
+  User,
   BookingDetail,
   BookingParams,
-  BookingCalendarEvent,
-  AnalyticsOverview,
+  SystemSettings,
+  TrafficAnalytics,
   RevenueAnalytics,
   BookingAnalytics,
   UserAnalytics,
-  TrafficAnalytics,
-  User,
-  SystemSettings,
-  VehicleType,
+  AnalyticsOverview,
   SystemLog,
+  BookingsResponse,
+  SeparatedBookingsResponse,
+  BookingStatistics,
+  CalendarEvent,
 } from "../types/api";
-
-// Create axios instance with base URL from environment variable
-const api = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL,
-  headers: {
-    "Content-Type": "application/json",
-  },
-  withCredentials: true, // Include credentials for cookie-based auth
-});
-
-// Add response interceptor to handle authentication errors
-api.interceptors.response.use(
-  (response) => {
-    return response;
-  },
-  (error) => {
-    // Handle authentication errors
-    if (error.response && error.response.status === 401) {
-      // If we're in the browser, redirect to login
-      if (typeof window !== "undefined") {
-        // Remove user info from localStorage
-        localStorage.removeItem("userInfo");
-        window.location.href = "/auth/signin?session=expired";
-      }
-    }
-    return Promise.reject(error);
-  }
-);
-
-// Handle API errors
-const handleApiError = (error: unknown): ApiResponse<never> => {
-  if (axios.isAxiosError(error)) {
-    const axiosError = error as AxiosError<{ message?: string; code?: string }>;
-    return {
-      success: false,
-      error: {
-        message: axiosError.response?.data?.message || "An error occurred",
-        code: axiosError.response?.data?.code || axiosError.code,
-      },
-    };
-  }
-
-  return {
-    success: false,
-    error: {
-      message:
-        error instanceof Error ? error.message : "An unknown error occurred",
-    },
-  };
-};
-
-// Helper function to extract data from backend response
-const extractData = <T>(response: { data?: { data?: T } | T }): T => {
-  // Backend returns data in response.data.data structure
-  if (response.data && typeof response.data === 'object' && 'data' in response.data) {
-    return response.data.data as T;
-  }
-  return response.data as T;
-};
 
 // Auth API Calls
 export const authAPI = {
@@ -112,7 +54,7 @@ export const authAPI = {
           }
         } catch {
           // If we can't parse the error response, use the status text
-          errorMessage = response.statusText || `There is an HTTP error! status: ${response.status}`;
+          errorMessage = response.statusText || `HTTP error! status: ${response.status}`;
         }
         
         throw new Error(errorMessage);
@@ -127,7 +69,7 @@ export const authAPI = {
           JSON.stringify({
             uid: data.data.user.uid,
             email: data.data.user.email,
-            displayName: data.data.user.displayName,
+            displayName: data.data.user.fullName, // Use fullName from backend
             role: data.data.user.role,
           })
         );
@@ -148,11 +90,11 @@ export const authAPI = {
     } catch (error) {
       console.error("Login error:", error);
       
-      if (error instanceof Error) {
+      if (error instanceof TypeError && error.message.includes('fetch')) {
         return {
           success: false,
           error: {
-            message: error.message || "Network error. Please try again.",
+            message: "Network error. Please try again.",
             code: "NETWORK_ERROR",
           },
         };
@@ -161,400 +103,631 @@ export const authAPI = {
       return {
         success: false,
         error: {
-          message: "Network error. Please try again.",
-          code: "NETWORK_ERROR",
+          message: error instanceof Error ? error.message : "Login failed",
+          code: "LOGIN_FAILED",
         },
       };
     }
   },
 
-  logout: async (): Promise<ApiResponse<void>> => {
+  logout: async (): Promise<ApiResponse<{ message: string }>> => {
     try {
-      // Call backend logout endpoint to clear cookies
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/auth/logout`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/auth/logout`, {
         method: 'POST',
         credentials: 'include',
       });
-      
-      // Clear local storage
-      localStorage.removeItem("userInfo");
-      return { success: true };
+
+      if (response.ok) {
+        localStorage.removeItem("userInfo");
+        return {
+          success: true,
+          data: { message: "Logged out successfully" },
+        };
+      } else {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
     } catch (error) {
       console.error("Logout error:", error);
-      // Still clear local storage even if backend call fails
+      // Still clear local storage even if API call fails
       localStorage.removeItem("userInfo");
-      return { success: true };
+      return {
+        success: false,
+        error: {
+          message: "Logout failed",
+          code: "LOGOUT_FAILED",
+        },
+      };
     }
   },
 
   checkAdminStatus: async (): Promise<ApiResponse<User>> => {
     try {
-      // Check with backend using cookies
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/auth/check-admin`, {
         credentials: 'include',
       });
 
       if (!response.ok) {
-        if (response.status === 401) {
-          // Clear local storage if backend says not authenticated
-          localStorage.removeItem("userInfo");
-          return {
-            success: false,
-            error: {
-              message: "Authentication required",
-              code: "AUTHENTICATION_REQUIRED",
-            },
-          };
-        }
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
-      
-      if (data.success && data.data) {
-        // Update localStorage with latest data from backend
-        localStorage.setItem("userInfo", JSON.stringify(data.data));
-        return { success: true, data: data.data };
-      } else {
-        localStorage.removeItem("userInfo");
-        return {
-          success: false,
-          error: {
-            message: data.error?.message || "Authentication check failed",
-            code: data.error?.code || "AUTH_CHECK_FAILED",
-          },
-        };
-      }
+      return data;
     } catch (error) {
-      console.error("Auth check error:", error);
-      localStorage.removeItem("userInfo");
+      console.error("Check admin status error:", error);
       return {
         success: false,
         error: {
-          message: "Network error during authentication check",
-          code: "NETWORK_ERROR",
+          message: "Failed to check admin status",
+          code: "CHECK_ADMIN_FAILED",
         },
       };
     }
   },
 
   createAdmin: async (): Promise<ApiResponse<User>> => {
-    // Admin creation is disabled for hardcoded users
     return {
       success: false,
       error: {
-        message: "Admin creation is disabled. Only pre-authorized users can access the dashboard.",
+        message: "Admin creation is disabled",
         code: "ADMIN_CREATION_DISABLED",
       },
     };
   },
 };
 
-// Booking API Calls
+// Enhanced Bookings API
 export const bookingsAPI = {
-  getAll: async (
-    params?: BookingParams
-  ): Promise<
-    ApiResponse<{
-      bookings: BookingDetail[];
-      pagination: {
-        total: number;
-        pages: number;
-        currentPage: number;
-        limit: number;
-      };
-    }>
-  > => {
+  // Get all bookings with enhanced filtering
+  getAllBookings: async (params?: BookingParams): Promise<ApiResponse<BookingsResponse>> => {
     try {
-      const response = await api.get("/api/dashboard/bookings", { params });
-      const data = extractData(response);
-      return { success: true, data };
-    } catch (error) {
-      return handleApiError(error);
-    }
-  },
+      const queryParams = new URLSearchParams();
+      if (params?.status) queryParams.append('status', params.status);
+      if (params?.startDate) queryParams.append('startDate', params.startDate);
+      if (params?.endDate) queryParams.append('endDate', params.endDate);
+      if (params?.vehicleType) queryParams.append('vehicleType', params.vehicleType);
+      if (params?.bookingType) queryParams.append('bookingType', params.bookingType);
+      if (params?.search) queryParams.append('search', params.search);
+      if (params?.page) queryParams.append('page', params.page.toString());
+      if (params?.limit) queryParams.append('limit', params.limit.toString());
+      if (params?.sort) queryParams.append('sort', params.sort);
+      if (params?.order) queryParams.append('order', params.order);
 
-  getCalendarEvents: async (
-    startDate: string,
-    endDate: string,
-    status?: string
-  ): Promise<ApiResponse<{ events: BookingCalendarEvent[] }>> => {
-    try {
-      let url = `/api/dashboard/bookings/calendar?startDate=${startDate}&endDate=${endDate}`;
-      if (status) {
-        url += `&status=${status}`;
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/bookings?${queryParams}`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const response = await api.get(url);
-      const data = extractData<{ events: BookingCalendarEvent[] }>(response);
-      return { success: true, data };
+      const data = await response.json();
+      return data;
     } catch (error) {
-      console.error("Error fetching calendar events:", error);
-      return handleApiError(error);
-    }
-  },
-
-  getById: async (id: string): Promise<ApiResponse<BookingDetail>> => {
-    try {
-      const response = await api.get(`/api/dashboard/bookings/${id}`);
-      const data = extractData<BookingDetail>(response);
-      return { success: true, data };
-    } catch (error) {
-      return handleApiError(error);
-    }
-  },
-
-  update: async (
-    id: string,
-    data: Partial<BookingDetail>
-  ): Promise<
-    ApiResponse<{ id: string; message: string; updatedFields: string[] }>
-  > => {
-    try {
-      const response = await api.put(`/api/dashboard/bookings/${id}`, data);
-      const responseData = extractData<{ id: string; message: string; updatedFields: string[] }>(response);
-      return { success: true, data: responseData };
-    } catch (error) {
-      return handleApiError(error);
-    }
-  },
-
-  delete: async (
-    id: string
-  ): Promise<ApiResponse<{ message: string; id: string }>> => {
-    try {
-      const response = await api.delete(`/api/dashboard/bookings/${id}`);
-      const data = extractData<{ message: string; id: string }>(response);
-      return { success: true, data };
-    } catch (error) {
-      return handleApiError(error);
-    }
-  },
-};
-
-// User API Calls
-export const usersAPI = {
-  getAll: async (params?: {
-    role?: string;
-    query?: string;
-    page?: number;
-    limit?: number;
-  }): Promise<
-    ApiResponse<{
-      users: User[];
-      pagination: {
-        total: number;
-        pages: number;
-        currentPage: number;
-        limit: number;
+      console.error("Get all bookings error:", error);
+      return {
+        success: false,
+        error: {
+          message: "Failed to fetch bookings",
+          code: "FETCH_BOOKINGS_FAILED",
+        },
       };
-    }>
-  > => {
-    try {
-      const response = await api.get("/api/dashboard/users", { params });
-      const data = extractData(response);
-      return { success: true, data };
-    } catch (error) {
-      return handleApiError(error);
     }
   },
 
-  getById: async (
-    uid: string
-  ): Promise<
-    ApiResponse<{
-      user: User & { stats: { totalBookings: number; totalSpent: number } };
-      recentBookings: BookingDetail[];
-    }>
-  > => {
+  // Get separated bookings (Events vs Taxi)
+  getSeparatedBookings: async (params?: BookingParams): Promise<ApiResponse<SeparatedBookingsResponse>> => {
     try {
-      const response = await api.get(`/api/dashboard/users/${uid}`);
-      const data = extractData(response);
-      return { success: true, data };
+      const queryParams = new URLSearchParams();
+      if (params?.startDate) queryParams.append('startDate', params.startDate);
+      if (params?.endDate) queryParams.append('endDate', params.endDate);
+      if (params?.status) queryParams.append('status', params.status);
+      if (params?.page) queryParams.append('page', params.page.toString());
+      if (params?.limit) queryParams.append('limit', params.limit.toString());
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/bookings/separated?${queryParams}`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
     } catch (error) {
-      return handleApiError(error);
+      console.error("Get separated bookings error:", error);
+      return {
+        success: false,
+        error: {
+          message: "Failed to fetch separated bookings",
+          code: "FETCH_SEPARATED_BOOKINGS_FAILED",
+        },
+      };
     }
   },
 
-  update: async (
-    uid: string,
-    data: Partial<User>
-  ): Promise<
-    ApiResponse<{ uid: string; message: string; updatedFields: string[] }>
-  > => {
+  // Get booking statistics
+  getBookingStatistics: async (startDate?: string, endDate?: string): Promise<ApiResponse<BookingStatistics>> => {
     try {
-      const response = await api.put(`/api/dashboard/users/${uid}`, data);
-      const responseData = extractData<{ uid: string; message: string; updatedFields: string[] }>(response);
-      return { success: true, data: responseData };
+      const queryParams = new URLSearchParams();
+      if (startDate) queryParams.append('startDate', startDate);
+      if (endDate) queryParams.append('endDate', endDate);
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/bookings/statistics?${queryParams}`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
     } catch (error) {
-      return handleApiError(error);
+      console.error("Get booking statistics error:", error);
+      return {
+        success: false,
+        error: {
+          message: "Failed to fetch booking statistics",
+          code: "FETCH_BOOKING_STATISTICS_FAILED",
+        },
+      };
     }
   },
 
-  disable: async (
-    uid: string
-  ): Promise<ApiResponse<{ message: string; uid: string }>> => {
+  // Get calendar events
+  getCalendarEvents: async (startDate: string, endDate: string, status?: string, bookingType?: string): Promise<ApiResponse<{ events: CalendarEvent[] }>> => {
     try {
-      const response = await api.post(`/api/dashboard/users/${uid}/disable`);
-      const data = extractData<{ message: string; uid: string }>(response);
-      return { success: true, data };
+      const queryParams = new URLSearchParams();
+      queryParams.append('startDate', startDate);
+      queryParams.append('endDate', endDate);
+      if (status) queryParams.append('status', status);
+      if (bookingType) queryParams.append('bookingType', bookingType);
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/bookings/calendar?${queryParams}`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
     } catch (error) {
-      return handleApiError(error);
+      console.error("Get calendar events error:", error);
+      return {
+        success: false,
+        error: {
+          message: "Failed to fetch calendar events",
+          code: "FETCH_CALENDAR_EVENTS_FAILED",
+        },
+      };
+    }
+  },
+
+  // Get booking details
+  getBookingDetails: async (id: string): Promise<ApiResponse<BookingDetail>> => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/bookings/${id}`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Get booking details error:", error);
+      return {
+        success: false,
+        error: {
+          message: "Failed to fetch booking details",
+          code: "FETCH_BOOKING_DETAILS_FAILED",
+        },
+      };
+    }
+  },
+
+  // Update booking
+  updateBooking: async (id: string, updateData: Partial<BookingDetail>): Promise<ApiResponse<{ message: string; updatedFields: string[] }>> => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/bookings/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(updateData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Update booking error:", error);
+      return {
+        success: false,
+        error: {
+          message: "Failed to update booking",
+          code: "UPDATE_BOOKING_FAILED",
+        },
+      };
+    }
+  },
+
+  // Delete booking
+  deleteBooking: async (id: string): Promise<ApiResponse<{ message: string; id: string }>> => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/bookings/${id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Delete booking error:", error);
+      return {
+        success: false,
+        error: {
+          message: "Failed to delete booking",
+          code: "DELETE_BOOKING_FAILED",
+        },
+      };
     }
   },
 };
 
-// Analytics API Calls
+// Enhanced Analytics API
 export const analyticsAPI = {
-  getOverview: async (
-    period: string = "week"
-  ): Promise<ApiResponse<AnalyticsOverview>> => {
+  getOverview: async (period: string = 'week'): Promise<ApiResponse<AnalyticsOverview>> => {
     try {
-      const response = await api.get(
-        `/api/dashboard/analytics/overview?period=${period}`
-      );
-      const data = extractData<AnalyticsOverview>(response);
-      return { success: true, data };
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/analytics/overview?period=${period}`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
     } catch (error) {
-      return handleApiError(error);
+      console.error("Get overview analytics error:", error);
+      return {
+        success: false,
+        error: {
+          message: "Failed to fetch overview analytics",
+          code: "FETCH_OVERVIEW_ANALYTICS_FAILED",
+        },
+      };
     }
   },
 
-  getRevenueAnalytics: async (params?: {
-    startDate?: string;
-    endDate?: string;
-    interval?: "day" | "week" | "month";
-  }): Promise<ApiResponse<RevenueAnalytics>> => {
+  getRevenue: async (startDate?: string, endDate?: string, interval?: string): Promise<ApiResponse<RevenueAnalytics>> => {
     try {
-      const response = await api.get("/api/dashboard/analytics/revenue", {
-        params,
+      const queryParams = new URLSearchParams();
+      if (startDate) queryParams.append('startDate', startDate);
+      if (endDate) queryParams.append('endDate', endDate);
+      if (interval) queryParams.append('interval', interval);
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/analytics/revenue?${queryParams}`, {
+        credentials: 'include',
       });
-      const data = extractData<RevenueAnalytics>(response);
-      return { success: true, data };
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
     } catch (error) {
-      return handleApiError(error);
+      console.error("Get revenue analytics error:", error);
+      return {
+        success: false,
+        error: {
+          message: "Failed to fetch revenue analytics",
+          code: "FETCH_REVENUE_ANALYTICS_FAILED",
+        },
+      };
     }
   },
 
-  getBookingAnalytics: async (params?: {
-    startDate?: string;
-    endDate?: string;
-    interval?: "day" | "week" | "month";
-  }): Promise<ApiResponse<BookingAnalytics>> => {
+  getBookings: async (startDate?: string, endDate?: string, interval?: string): Promise<ApiResponse<BookingAnalytics>> => {
     try {
-      const response = await api.get("/api/dashboard/analytics/bookings", {
-        params,
+      const queryParams = new URLSearchParams();
+      if (startDate) queryParams.append('startDate', startDate);
+      if (endDate) queryParams.append('endDate', endDate);
+      if (interval) queryParams.append('interval', interval);
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/analytics/bookings?${queryParams}`, {
+        credentials: 'include',
       });
-      const data = extractData<BookingAnalytics>(response);
-      return { success: true, data };
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
     } catch (error) {
-      return handleApiError(error);
+      console.error("Get bookings analytics error:", error);
+      return {
+        success: false,
+        error: {
+          message: "Failed to fetch bookings analytics",
+          code: "FETCH_BOOKINGS_ANALYTICS_FAILED",
+        },
+      };
     }
   },
 
-  getUserAnalytics: async (params?: {
-    startDate?: string;
-    endDate?: string;
-    interval?: "day" | "week" | "month";
-  }): Promise<ApiResponse<UserAnalytics>> => {
+  getUsers: async (startDate?: string, endDate?: string, interval?: string): Promise<ApiResponse<UserAnalytics>> => {
     try {
-      const response = await api.get("/api/dashboard/analytics/users", {
-        params,
+      const queryParams = new URLSearchParams();
+      if (startDate) queryParams.append('startDate', startDate);
+      if (endDate) queryParams.append('endDate', endDate);
+      if (interval) queryParams.append('interval', interval);
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/analytics/users?${queryParams}`, {
+        credentials: 'include',
       });
-      const data = extractData<UserAnalytics>(response);
-      return { success: true, data };
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
     } catch (error) {
-      return handleApiError(error);
+      console.error("Get users analytics error:", error);
+      return {
+        success: false,
+        error: {
+          message: "Failed to fetch users analytics",
+          code: "FETCH_USERS_ANALYTICS_FAILED",
+        },
+      };
     }
   },
 
-  getTrafficAnalytics: async (params?: {
-    startDate?: string;
-    endDate?: string;
-    interval?: "day" | "week" | "month";
-  }): Promise<ApiResponse<TrafficAnalytics>> => {
+  getTraffic: async (startDate?: string, endDate?: string, interval?: string): Promise<ApiResponse<TrafficAnalytics>> => {
     try {
-      const response = await api.get("/api/dashboard/analytics/traffic", {
-        params,
+      const queryParams = new URLSearchParams();
+      if (startDate) queryParams.append('startDate', startDate);
+      if (endDate) queryParams.append('endDate', endDate);
+      if (interval) queryParams.append('interval', interval);
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/analytics/traffic?${queryParams}`, {
+        credentials: 'include',
       });
-      const data = extractData<TrafficAnalytics>(response);
-      return { success: true, data };
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
     } catch (error) {
-      return handleApiError(error);
+      console.error("Get traffic analytics error:", error);
+      return {
+        success: false,
+        error: {
+          message: "Failed to fetch traffic analytics",
+          code: "FETCH_TRAFFIC_ANALYTICS_FAILED",
+        },
+      };
     }
   },
 };
 
-// Settings API Calls
+// Users API
+export const usersAPI = {
+  getAllUsers: async (params?: { role?: string; query?: string; page?: number; limit?: number }): Promise<ApiResponse<{ users: User[]; pagination: { total: number; pages: number; currentPage: number; limit: number } }>> => {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params?.role) queryParams.append('role', params.role);
+      if (params?.query) queryParams.append('query', params.query);
+      if (params?.page) queryParams.append('page', params.page.toString());
+      if (params?.limit) queryParams.append('limit', params.limit.toString());
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/users?${queryParams}`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Get all users error:", error);
+      return {
+        success: false,
+        error: {
+          message: "Failed to fetch users",
+          code: "FETCH_USERS_FAILED",
+        },
+      };
+    }
+  },
+
+  getUserDetails: async (uid: string): Promise<ApiResponse<{ user: User; recentBookings: Array<{ id: string; pickupDate: string; status: string; amount: number; vehicleType: string }> }>> => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/users/${uid}`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Get user details error:", error);
+      return {
+        success: false,
+        error: {
+          message: "Failed to fetch user details",
+          code: "FETCH_USER_DETAILS_FAILED",
+        },
+      };
+    }
+  },
+
+  updateUser: async (uid: string, updateData: Partial<User>): Promise<ApiResponse<{ message: string; updatedFields: string[] }>> => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/users/${uid}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(updateData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Update user error:", error);
+      return {
+        success: false,
+        error: {
+          message: "Failed to update user",
+          code: "UPDATE_USER_FAILED",
+        },
+      };
+    }
+  },
+
+  disableUser: async (uid: string): Promise<ApiResponse<{ message: string; uid: string }>> => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/users/${uid}/disable`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Disable user error:", error);
+      return {
+        success: false,
+        error: {
+          message: "Failed to disable user",
+          code: "DISABLE_USER_FAILED",
+        },
+      };
+    }
+  },
+};
+
+// System Settings API
 export const settingsAPI = {
   getSettings: async (): Promise<ApiResponse<SystemSettings>> => {
     try {
-      const response = await api.get("/api/dashboard/settings");
-      const data = extractData<SystemSettings>(response);
-      return { success: true, data };
-    } catch (error) {
-      return handleApiError(error);
-    }
-  },
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/settings`, {
+        credentials: 'include',
+      });
 
-  updateSettings: async (
-    data: Partial<SystemSettings>
-  ): Promise<ApiResponse<{ message: string; updatedFields: string[] }>> => {
-    try {
-      const response = await api.put("/api/dashboard/settings", data);
-      const responseData = extractData<{ message: string; updatedFields: string[] }>(response);
-      return { success: true, data: responseData };
-    } catch (error) {
-      return handleApiError(error);
-    }
-  },
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-  getLogs: async (params?: {
-    level?: "info" | "warn" | "error";
-    startDate?: string;
-    endDate?: string;
-    page?: number;
-    limit?: number;
-  }): Promise<
-    ApiResponse<{
-      logs: SystemLog[];
-      pagination: {
-        total: number;
-        pages: number;
-        currentPage: number;
-        limit: number;
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Get settings error:", error);
+      return {
+        success: false,
+        error: {
+          message: "Failed to fetch settings",
+          code: "FETCH_SETTINGS_FAILED",
+        },
       };
-    }>
-  > => {
+    }
+  },
+
+  updateSettings: async (settings: Partial<SystemSettings>): Promise<ApiResponse<{ message: string; updatedFields: string[] }>> => {
     try {
-      const response = await api.get("/api/dashboard/logs", { params });
-      const data = extractData(response);
-      return { success: true, data };
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/settings`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(settings),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
     } catch (error) {
-      return handleApiError(error);
+      console.error("Update settings error:", error);
+      return {
+        success: false,
+        error: {
+          message: "Failed to update settings",
+          code: "UPDATE_SETTINGS_FAILED",
+        },
+      };
     }
   },
 };
 
-// Vehicle API Calls
-export const vehiclesAPI = {
-  getVehicleTypes: async (): Promise<ApiResponse<VehicleType[]>> => {
+// System Logs API
+export const logsAPI = {
+  getLogs: async (params?: { level?: string; startDate?: string; endDate?: string; page?: number; limit?: number }): Promise<ApiResponse<{ logs: SystemLog[]; pagination: { total: number; pages: number; currentPage: number; limit: number } }>> => {
     try {
-      const response = await api.get("/api/dashboard/vehicles/types");
-      const data = extractData<VehicleType[]>(response);
-      return { success: true, data };
-    } catch (error) {
-      return handleApiError(error);
-    }
-  },
+      const queryParams = new URLSearchParams();
+      if (params?.level) queryParams.append('level', params.level);
+      if (params?.startDate) queryParams.append('startDate', params.startDate);
+      if (params?.endDate) queryParams.append('endDate', params.endDate);
+      if (params?.page) queryParams.append('page', params.page.toString());
+      if (params?.limit) queryParams.append('limit', params.limit.toString());
 
-  getVehiclePricing: async (vehicleTypeId: string): Promise<ApiResponse<VehicleType>> => {
-    try {
-      const response = await api.get(`/api/dashboard/vehicles/${vehicleTypeId}/pricing`);
-      const data = extractData<VehicleType>(response);
-      return { success: true, data };
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/logs?${queryParams}`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
     } catch (error) {
-      return handleApiError(error);
+      console.error("Get logs error:", error);
+      return {
+        success: false,
+        error: {
+          message: "Failed to fetch logs",
+          code: "FETCH_LOGS_FAILED",
+        },
+      };
     }
   },
 };

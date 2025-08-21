@@ -12,31 +12,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { bookingsAPI } from "@/lib/api";
 
 export default function BookingsPage() {
   const [bookings, setBookings] = useState<BookingDetail[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState("all");
   const [selectedBooking, setSelectedBooking] = useState<BookingDetail | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [downloadTimeframe, setDownloadTimeframe] = useState<string>("today");
+  const [downloadTimeframe, setDownloadTimeframe] = useState("lastMonth");
   const [isDownloading, setIsDownloading] = useState(false);
-  const [activeTab, setActiveTab] = useState("all");
-  const [searchQuery, setSearchQuery] = useState("");
 
   const fetchBookings = useCallback(
     async () => {
       setLoading(true);
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/bookings`, {
-          credentials: 'include'
-        });
+        const response = await bookingsAPI.getAllBookings();
 
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.data?.bookings) {
-            setBookings(data.data.bookings);
-          }
+        if (response.success && response.data?.bookings) {
+          setBookings(response.data.bookings);
         } else {
           setError('Failed to fetch bookings');
         }
@@ -67,72 +63,63 @@ export default function BookingsPage() {
   const downloadBookingsAsExcel = async () => {
     setIsDownloading(true);
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}api/dashboard/bookings?timeframe=${downloadTimeframe}&status=${activeTab !== "all" ? activeTab : ""}`, {
-        credentials: 'include'
-      });
+      // Import xlsx dynamically to avoid SSR issues
+      const XLSX = await import('xlsx');
+      
+      const workbook = XLSX.utils.book_new();
+      const worksheet = XLSX.utils.json_to_sheet(
+        bookings.map((booking: BookingDetail) => ({
+          'Reference Number': booking.referenceNumber,
+          'Customer Name': booking.customer?.fullName || 'N/A',
+          'Customer Email': booking.customer?.email || 'N/A',
+          'Customer Phone': booking.customer?.phoneNumber || 'N/A',
+          'Status': booking.status,
+          'Booking Type': booking.bookingType || 'N/A',
+          'Pickup Date': booking.pickupDate,
+          'Pickup Time': booking.pickupTime,
+          'Pickup Location': booking.locations?.pickup?.address || 'N/A',
+          'Dropoff Location': booking.locations?.dropoff?.address || 'N/A',
+          'Vehicle Type': booking.vehicle?.name || 'N/A',
+          'Price': `£${booking.vehicle?.price?.amount?.toLocaleString() || '0'}`,
+          'Currency': booking.vehicle?.price?.currency || 'GBP',
+          'Distance (miles)': booking.journey?.distance_miles || 'N/A',
+          'Duration (minutes)': booking.journey?.duration_minutes || 'N/A',
+          'Passengers': booking.passengers?.count || 'N/A',
+          'Special Requests': booking.specialRequests || 'N/A',
+          'Created At': new Date(booking.createdAt).toLocaleString(),
+          'Updated At': new Date(booking.updatedAt).toLocaleString(),
+        }))
+      );
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.data?.bookings) {
-          // Import xlsx dynamically to avoid SSR issues
-          const XLSX = await import('xlsx');
-          
-          const workbook = XLSX.utils.book_new();
-          const worksheet = XLSX.utils.json_to_sheet(
-            data.data.bookings.map((booking: BookingDetail) => ({
-              'Booking ID': booking.id,
-              'Customer Name': booking.customer?.fullName || 'N/A',
-              'Customer Email': booking.customer?.email || 'N/A',
-              'Customer Phone': booking.customer?.phone || 'N/A',
-              'Status': booking.status,
-              'Pickup Date': booking.pickupDate,
-              'Pickup Time': booking.pickupTime,
-              'Pickup Location': booking.locations?.pickup?.address || 'N/A',
-              'Dropoff Location': booking.locations?.dropoff?.address || 'N/A',
-              'Vehicle Type': booking.vehicle?.name || 'N/A',
-              'Price': `£${booking.vehicle?.price?.amount?.toLocaleString() || '0'}`,
-              'Currency': booking.vehicle?.price?.currency || 'GBP',
-              'Distance (miles)': booking.journey?.distance_miles || 'N/A',
-              'Duration (minutes)': booking.journey?.duration_minutes || 'N/A',
-              'Passengers': booking.passengers?.count || 'N/A',
-              'Special Requests': booking.specialRequests || 'N/A',
-              'Created At': new Date(booking.createdAt).toLocaleString(),
-              'Updated At': new Date(booking.updatedAt).toLocaleString(),
-            }))
-          );
+      // Set column widths
+      const columnWidths = [
+        { wch: 15 }, // Reference Number
+        { wch: 20 }, // Customer Name
+        { wch: 25 }, // Customer Email
+        { wch: 15 }, // Customer Phone
+        { wch: 12 }, // Status
+        { wch: 15 }, // Booking Type
+        { wch: 15 }, // Pickup Date
+        { wch: 12 }, // Pickup Time
+        { wch: 30 }, // Pickup Location
+        { wch: 30 }, // Dropoff Location
+        { wch: 20 }, // Vehicle Type
+        { wch: 12 }, // Price
+        { wch: 10 }, // Currency
+        { wch: 15 }, // Distance
+        { wch: 15 }, // Duration
+        { wch: 12 }, // Passengers
+        { wch: 25 }, // Special Requests
+        { wch: 20 }, // Created At
+        { wch: 20 }, // Updated At
+      ];
 
-          // Set column widths
-          const columnWidths = [
-            { wch: 15 }, // Booking ID
-            { wch: 20 }, // Customer Name
-            { wch: 25 }, // Customer Email
-            { wch: 15 }, // Customer Phone
-            { wch: 12 }, // Status
-            { wch: 15 }, // Pickup Date
-            { wch: 12 }, // Pickup Time
-            { wch: 30 }, // Pickup Location
-            { wch: 30 }, // Dropoff Location
-            { wch: 20 }, // Vehicle Type
-            { wch: 12 }, // Price
-            { wch: 10 }, // Currency
-            { wch: 15 }, // Distance
-            { wch: 15 }, // Duration
-            { wch: 12 }, // Passengers
-            { wch: 25 }, // Special Requests
-            { wch: 20 }, // Created At
-            { wch: 20 }, // Updated At
-          ];
+      worksheet['!cols'] = columnWidths;
 
-          worksheet['!cols'] = columnWidths;
-
-          XLSX.utils.book_append_sheet(workbook, worksheet, 'Bookings');
-          
-          const fileName = `bookings_${downloadTimeframe}_${new Date().toISOString().split('T')[0]}.xlsx`;
-          XLSX.writeFile(workbook, fileName);
-        }
-      } else {
-        setError('Failed to download bookings data');
-      }
+      XLSX.utils.book_append_sheet(workbook, worksheet, 'Bookings');
+      
+      const fileName = `bookings_${downloadTimeframe}_${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
     } catch (error) {
       console.error('Error downloading bookings:', error);
       setError('Failed to download bookings data');
@@ -167,7 +154,8 @@ export default function BookingsPage() {
         booking.customer?.email?.toLowerCase().includes(query) ||
         booking.vehicle?.name?.toLowerCase().includes(query) ||
         booking.locations?.pickup?.address?.toLowerCase().includes(query) ||
-        booking.locations?.dropoff?.address?.toLowerCase().includes(query)
+        booking.locations?.dropoff?.address?.toLowerCase().includes(query) ||
+        booking.referenceNumber?.toLowerCase().includes(query)
       );
     }
     return true;
@@ -269,132 +257,132 @@ export default function BookingsPage() {
         </div>
       </div>
 
-      {/* Enhanced Search and Filters */}
-      <div className="mb-6 flex flex-col md:flex-row gap-4">
-        <div className="flex-1">
-          <div className="relative group">
-            <input
-              type="text"
-              placeholder="Search bookings by customer, vehicle, or location..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-6 py-4 bg-gray-800/50 border border-gray-600 text-white placeholder-gray-400 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 group-hover:border-gray-500"
-            />
-            <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
-              <div className="w-5 h-5 bg-gray-600 rounded-full animate-pulse"></div>
+      {/* Enhanced Search & Filters */}
+      <div className="mb-8">
+        <div className="flex flex-col md:flex-row gap-4 items-center">
+          <div className="flex-1">
+            <div className="relative group">
+              <input
+                type="text"
+                placeholder="Search bookings by customer, vehicle, or location..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full px-6 py-4 bg-gray-800/50 border border-gray-600 text-white placeholder-gray-400 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 group-hover:border-gray-500"
+              />
+              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                <CalendarIcon className="h-5 w-5 text-gray-400" />
+              </div>
             </div>
           </div>
-        </div>
-        <div className="flex gap-3">
-          <Button
-            onClick={() => setActiveTab("all")}
-            className={`px-6 py-4 rounded-2xl transition-all duration-300 transform hover:scale-105 ${
-              activeTab === "all"
-                ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg"
-                : "bg-gray-800/50 text-gray-300 hover:bg-gray-700/50 border border-gray-600"
-            }`}
-          >
-            All ({bookings.length})
-          </Button>
-          <Button
-            onClick={() => setActiveTab("pending")}
-            className={`px-6 py-4 rounded-2xl transition-all duration-300 transform hover:scale-105 ${
-              activeTab === "pending"
-                ? "bg-gradient-to-r from-yellow-600 to-yellow-700 text-white shadow-lg"
-                : "bg-gray-800/50 text-gray-300 hover:bg-gray-700/50 border border-gray-600"
-            }`}
-          >
-            Pending ({bookings.filter(b => b.status === "pending").length})
-          </Button>
-          <Button
-            onClick={() => setActiveTab("confirmed")}
-            className={`px-6 py-4 rounded-2xl transition-all duration-300 transform hover:scale-105 ${
-              activeTab === "confirmed"
-                ? "bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg"
-                : "bg-gray-800/50 text-gray-300 hover:bg-gray-700/50 border border-gray-600"
-            }`}
-          >
-            Confirmed ({bookings.filter(b => b.status === "confirmed").length})
-          </Button>
-          <Button
-            onClick={() => setActiveTab("completed")}
-            className={`px-6 py-4 rounded-2xl transition-all duration-300 transform hover:scale-105 ${
-              activeTab === "completed"
-                ? "bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg"
-                : "bg-gray-800/50 text-gray-300 hover:bg-gray-700/50 border border-gray-600"
-            }`}
-          >
-            Completed ({bookings.filter(b => b.status === "completed").length})
-          </Button>
+          <div className="flex gap-3">
+            <Button
+              onClick={() => setActiveTab("all")}
+              className={`px-6 py-3 rounded-xl transition-all duration-300 ${
+                activeTab === "all"
+                  ? "bg-blue-600 text-white shadow-lg"
+                  : "bg-gray-800/50 text-gray-300 hover:bg-gray-700/50"
+              }`}
+            >
+              All ({bookings.length})
+            </Button>
+            <Button
+              onClick={() => setActiveTab("pending")}
+              className={`px-6 py-3 rounded-xl transition-all duration-300 ${
+                activeTab === "pending"
+                  ? "bg-yellow-600 text-white shadow-lg"
+                  : "bg-gray-800/50 text-gray-300 hover:bg-gray-700/50"
+              }`}
+            >
+              Pending ({bookings.filter(b => b.status === 'pending').length})
+            </Button>
+            <Button
+              onClick={() => setActiveTab("confirmed")}
+              className={`px-6 py-3 rounded-xl transition-all duration-300 ${
+                activeTab === "confirmed"
+                  ? "bg-green-600 text-white shadow-lg"
+                  : "bg-gray-800/50 text-gray-300 hover:bg-gray-700/50"
+              }`}
+            >
+              Confirmed ({bookings.filter(b => b.status === 'confirmed').length})
+            </Button>
+            <Button
+              onClick={() => setActiveTab("completed")}
+              className={`px-6 py-3 rounded-xl transition-all duration-300 ${
+                activeTab === "completed"
+                  ? "bg-purple-600 text-white shadow-lg"
+                  : "bg-gray-800/50 text-gray-300 hover:bg-gray-700/50"
+              }`}
+            >
+              Completed ({bookings.filter(b => b.status === 'completed').length})
+            </Button>
+          </div>
         </div>
       </div>
 
-      {/* Enhanced Bookings Grid */}
+      {/* Enhanced Booking Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
         {filteredBookings.map((booking) => (
-          <Card key={booking.id} className="group bg-gradient-to-br from-gray-900/80 to-gray-800/60 border border-gray-700 hover:border-purple-500/50 hover:shadow-2xl transition-all duration-700 transform hover:-translate-y-2 hover:scale-105 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <CardHeader className="pb-4 relative">
-              <div className="flex justify-between items-start mb-3">
-                <div className="flex-1">
-                  <h3 className="text-lg font-bold text-white group-hover:text-purple-300 transition-colors duration-300 mb-2">
-                    {booking.customer?.fullName || 'Unknown Customer'}
-                  </h3>
-                  <div className="flex items-center gap-2 text-sm text-gray-400">
-                    <CalendarIcon className="w-4 h-4" />
-                    <span>{booking.pickupDate} • {booking.pickupTime}</span>
-                  </div>
-                </div>
-                <span className={`px-4 py-2 rounded-full text-sm font-semibold border transition-all duration-300 ${getStatusClass(booking.status)}`}>
+          <Card key={booking.id} className="group bg-gradient-to-br from-gray-900/80 to-gray-800/60 border border-gray-700 hover:border-blue-500/50 hover:shadow-2xl transition-all duration-700 transform hover:-translate-y-2 hover:scale-105 overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+            <CardHeader className="bg-gradient-to-r from-blue-900/50 to-purple-800/30 border-b border-blue-700/50 relative">
+              <div className="flex justify-between items-start">
+                <CardTitle className="text-lg text-white group-hover:text-blue-300 transition-colors duration-300">
+                  {booking.referenceNumber || 'N/A'}
+                </CardTitle>
+                <div className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-300 ${getStatusClass(booking.status)}`}>
                   {booking.status}
-                </span>
+                </div>
               </div>
+              <p className="text-sm text-gray-300 mt-2">
+                {booking.bookingType || 'N/A'} • {booking.pickupDate} at {booking.pickupTime}
+              </p>
             </CardHeader>
-            <CardContent className="pt-0 relative">
-              <div className="space-y-4 mb-6">
-                <div className="bg-gray-800/30 p-4 rounded-xl border border-gray-700/50">
-                  <p className="text-xs text-purple-400 mb-2 font-semibold uppercase tracking-wide">Journey</p>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-sm text-gray-300">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <span className="font-medium">From:</span>
-                      <span className="text-white">{booking.locations?.pickup?.address || 'N/A'}</span>
+            <CardContent className="pt-6 relative">
+              <div className="space-y-4">
+                <div className="bg-gray-800/30 p-4 rounded-xl border border-gray-700/50 hover:border-blue-500/50 transition-all duration-300">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+                      <CalendarIcon className="h-4 w-4 text-white" />
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-gray-300">
-                      <div className="w-2 h-2 bg-red-500 rounded-full"></div>
-                      <span className="font-medium">To:</span>
-                      <span className="text-white">{booking.locations?.dropoff?.address || 'N/A'}</span>
-                    </div>
+                    <p className="text-xs text-blue-400 font-semibold uppercase tracking-wide">Customer</p>
                   </div>
+                  <p className="font-semibold text-white text-sm">{booking.customer?.fullName || 'N/A'}</p>
+                  <p className="text-gray-300 text-xs">{booking.customer?.email || 'N/A'}</p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-800/30 p-3 rounded-lg border border-gray-700/50">
-                    <p className="text-xs text-blue-400 mb-1 font-semibold uppercase tracking-wide">Vehicle</p>
-                    <p className="text-white font-medium">{booking.vehicle?.name || 'N/A'}</p>
+                <div className="bg-gray-800/30 p-4 rounded-xl border border-gray-700/50 hover:border-purple-500/50 transition-all duration-300">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
+                      <CalendarIcon className="h-4 w-4 text-white" />
+                    </div>
+                    <p className="text-xs text-purple-400 font-semibold uppercase tracking-wide">Journey</p>
                   </div>
-                  <div className="bg-gray-800/30 p-3 rounded-lg border border-gray-700/50">
-                    <p className="text-xs text-emerald-400 mb-1 font-semibold uppercase tracking-wide">Price</p>
-                    <p className="text-white font-bold text-lg">£{booking.vehicle?.price?.amount?.toLocaleString() || '0'}</p>
-                  </div>
+                  <p className="text-white text-sm mb-1">
+                    <span className="text-gray-400">From:</span> {booking.locations?.pickup?.address || 'N/A'}
+                  </p>
+                  <p className="text-white text-sm">
+                    <span className="text-gray-400">To:</span> {booking.locations?.dropoff?.address || 'N/A'}
+                  </p>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-gray-800/30 p-3 rounded-lg border border-gray-700/50">
-                    <p className="text-xs text-orange-400 mb-1 font-semibold uppercase tracking-wide">Distance</p>
-                    <p className="text-white font-medium">{booking.journey?.distance_miles || 'N/A'} miles</p>
+                <div className="bg-gray-800/30 p-4 rounded-xl border border-gray-700/50 hover:border-emerald-500/50 transition-all duration-300">
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                      <CalendarIcon className="h-4 w-4 text-white" />
+                    </div>
+                    <p className="text-xs text-emerald-400 font-semibold uppercase tracking-wide">Vehicle & Price</p>
                   </div>
-                  <div className="bg-gray-800/30 p-3 rounded-lg border border-gray-700/50">
-                    <p className="text-xs text-purple-400 mb-1 font-semibold uppercase tracking-wide">Duration</p>
-                    <p className="text-white font-medium">{booking.journey?.duration_minutes || 'N/A'} min</p>
-                  </div>
+                  <p className="font-semibold text-white text-sm">{booking.vehicle?.name || 'N/A'}</p>
+                  <p className="text-emerald-300 text-lg font-bold">
+                    £{booking.vehicle?.price?.amount?.toLocaleString() || '0'}
+                  </p>
                 </div>
               </div>
 
-              <div className="flex justify-end">
+              <div className="flex justify-end mt-6">
                 <button
                   onClick={() => openBookingModal(booking)}
-                  className="px-8 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-gray-900 transition-all duration-300 transform hover:scale-105 font-medium shadow-lg hover:shadow-xl"
+                  className="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 transition-all duration-300 transform hover:scale-105 font-medium shadow-lg hover:shadow-xl"
                 >
                   View Details
                 </button>
@@ -405,73 +393,62 @@ export default function BookingsPage() {
       </div>
 
       {filteredBookings.length === 0 && (
-        <div className="text-center py-16">
-          <div className="w-24 h-24 bg-gray-800/50 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CalendarIcon className="h-12 w-12 text-gray-400" />
+        <div className="text-center py-12">
+          <div className="w-20 h-20 bg-gray-800/50 rounded-full flex items-center justify-center mx-auto mb-6">
+            <CalendarIcon className="h-10 w-10 text-gray-400" />
           </div>
-          <h3 className="text-2xl font-semibold text-white mb-2">No bookings found</h3>
-          <p className="text-gray-400 text-lg">
-            {searchQuery ? `No bookings match "${searchQuery}"` : `No ${activeTab === "all" ? "" : activeTab} bookings available`}
-          </p>
+          <h3 className="text-xl font-semibold text-white mb-2">No bookings found</h3>
+          <p className="text-gray-400">Try adjusting your search or filter criteria</p>
         </div>
       )}
 
       {/* Enhanced Booking Details Modal */}
       {isModalOpen && selectedBooking && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="w-[95vw] h-[95vh] bg-gray-900 rounded-3xl border border-gray-700 overflow-hidden shadow-2xl">
-            <div className="flex items-center justify-between p-6 border-b border-gray-700 bg-gradient-to-r from-gray-800/50 to-gray-700/50">
-              <h2 className="text-2xl font-bold text-white">Booking Details</h2>
-              <button
-                onClick={closeBookingModal}
-                className="w-10 h-10 bg-gray-800 hover:bg-gray-700 rounded-xl flex items-center justify-center text-gray-400 hover:text-white transition-all duration-300"
-              >
-                ✕
-              </button>
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+          <div className="bg-gray-900 rounded-3xl w-[95vw] h-[95vh] overflow-y-auto relative">
+            <div className="sticky top-0 bg-gradient-to-r from-blue-900/50 to-purple-900/50 border-b border-blue-700/50 p-6 rounded-t-3xl backdrop-blur-sm">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h2 className="text-3xl font-bold text-white mb-2">
+                    Booking Details - {selectedBooking.referenceNumber}
+                  </h2>
+                  <p className="text-gray-300">
+                    {selectedBooking.bookingType} • {selectedBooking.pickupDate} at {selectedBooking.pickupTime}
+                  </p>
+                </div>
+                <button
+                  onClick={closeBookingModal}
+                  className="w-10 h-10 bg-gray-800 hover:bg-gray-700 rounded-xl flex items-center justify-center text-gray-400 hover:text-white transition-all duration-300"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="p-6">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Customer Information */}
                 <Card className="bg-gray-800/50 border-gray-700">
                   <CardHeader>
-                    <CardTitle className="text-purple-300">Customer Information</CardTitle>
+                    <CardTitle className="text-white flex items-center gap-2">
+                      <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                        <CalendarIcon className="h-4 w-4 text-white" />
+                      </div>
+                      Customer Information
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div>
-                      <label className="text-sm text-gray-400">Full Name</label>
-                      <p className="text-white font-medium">{selectedBooking.customer?.fullName || 'N/A'}</p>
+                  <CardContent className="space-y-4">
+                    <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                      <label className="text-sm text-gray-400 mb-2 block">Full Name</label>
+                      <p className="text-white font-semibold">{selectedBooking.customer?.fullName || 'N/A'}</p>
                     </div>
-                    <div>
-                      <label className="text-sm text-gray-400">Email</label>
-                      <p className="text-white font-medium">{selectedBooking.customer?.email || 'N/A'}</p>
+                    <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                      <label className="text-sm text-gray-400 mb-2 block">Email</label>
+                      <p className="text-white font-semibold">{selectedBooking.customer?.email || 'N/A'}</p>
                     </div>
-                    <div>
-                      <label className="text-sm text-gray-400">Phone</label>
-                      <p className="text-white font-medium">{selectedBooking.customer?.phone || 'N/A'}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Vehicle Information */}
-                <Card className="bg-gray-800/50 border-gray-700">
-                  <CardHeader>
-                    <CardTitle className="text-blue-300">Vehicle Information</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div>
-                      <label className="text-sm text-gray-400">Vehicle Type</label>
-                      <p className="text-white font-medium">{selectedBooking.vehicle?.name || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-400">Vehicle ID</label>
-                      <p className="text-white font-medium">{selectedBooking.vehicle?.id || 'N/A'}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-400">Price</label>
-                      <p className="text-white font-medium">
-                        £{selectedBooking.vehicle?.price?.amount?.toLocaleString() || '0'} {selectedBooking.vehicle?.price?.currency || 'GBP'}
-                      </p>
+                    <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                      <label className="text-sm text-gray-400 mb-2 block">Phone</label>
+                      <p className="text-white font-semibold">{selectedBooking.customer?.phoneNumber || 'N/A'}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -479,92 +456,55 @@ export default function BookingsPage() {
                 {/* Journey Details */}
                 <Card className="bg-gray-800/50 border-gray-700">
                   <CardHeader>
-                    <CardTitle className="text-emerald-300">Journey Details</CardTitle>
+                    <CardTitle className="text-white flex items-center gap-2">
+                      <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
+                        <CalendarIcon className="h-4 w-4 text-white" />
+                      </div>
+                      Journey Details
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div>
-                      <label className="text-sm text-gray-400">Pickup Date & Time</label>
-                      <p className="text-white font-medium">{selectedBooking.pickupDate} at {selectedBooking.pickupTime}</p>
+                  <CardContent className="space-y-4">
+                    <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                      <label className="text-sm text-gray-400 mb-2 block">Pickup Location</label>
+                      <p className="text-white font-semibold">{selectedBooking.locations?.pickup?.address || 'N/A'}</p>
                     </div>
-                    <div>
-                      <label className="text-sm text-gray-400">Distance</label>
-                      <p className="text-white font-medium">{selectedBooking.journey?.distance_miles || 'N/A'} miles</p>
+                    <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                      <label className="text-sm text-gray-400 mb-2 block">Dropoff Location</label>
+                      <p className="text-white font-semibold">{selectedBooking.locations?.dropoff?.address || 'N/A'}</p>
                     </div>
-                    <div>
-                      <label className="text-sm text-gray-400">Duration</label>
-                      <p className="text-white font-medium">{selectedBooking.journey?.duration_minutes || 'N/A'} minutes</p>
+                    <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                      <label className="text-sm text-gray-400 mb-2 block">Distance & Duration</label>
+                      <p className="text-white font-semibold">
+                        {selectedBooking.journey?.distance_miles || '0'} miles • {selectedBooking.journey?.duration_minutes || '0'} minutes
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
 
-                {/* Locations */}
+                {/* Vehicle & Pricing */}
                 <Card className="bg-gray-800/50 border-gray-700">
                   <CardHeader>
-                    <CardTitle className="text-orange-300">Locations</CardTitle>
+                    <CardTitle className="text-white flex items-center gap-2">
+                      <div className="w-8 h-8 bg-emerald-600 rounded-lg flex items-center justify-center">
+                        <CalendarIcon className="h-4 w-4 text-white" />
+                      </div>
+                      Vehicle & Pricing
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div>
-                      <label className="text-sm text-gray-400">Pickup Location</label>
-                      <p className="text-white font-medium">{selectedBooking.locations?.pickup?.address || 'N/A'}</p>
+                  <CardContent className="space-y-4">
+                    <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                      <label className="text-sm text-gray-400 mb-2 block">Vehicle Type</label>
+                      <p className="text-white font-semibold">{selectedBooking.vehicle?.name || 'N/A'}</p>
                     </div>
-                    <div>
-                      <label className="text-sm text-gray-400">Dropoff Location</label>
-                      <p className="text-white font-medium">{selectedBooking.locations?.dropoff?.address || 'N/A'}</p>
+                    <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                      <label className="text-sm text-gray-400 mb-2 block">Price</label>
+                      <p className="text-emerald-300 text-2xl font-bold">
+                        £{selectedBooking.vehicle?.price?.amount?.toLocaleString() || '0'}
+                      </p>
                     </div>
-                    {selectedBooking.locations?.additionalStops && selectedBooking.locations.additionalStops.length > 0 && (
-                      <div>
-                        <label className="text-sm text-gray-400">Additional Stops</label>
-                        <div className="space-y-1">
-                          {selectedBooking.locations.additionalStops.map((stop, index) => (
-                            <p key={index} className="text-white text-sm">{stop.address}</p>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Passengers */}
-                <Card className="bg-gray-800/50 border-gray-700">
-                  <CardHeader>
-                    <CardTitle className="text-pink-300">Passenger Details</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm text-gray-400">Total Passengers</label>
-                        <p className="text-white font-medium">{selectedBooking.passengers?.count || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm text-gray-400">Checked Luggage</label>
-                        <p className="text-white font-medium">{selectedBooking.passengers?.checkedLuggage || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm text-gray-400">Hand Luggage</label>
-                        <p className="text-white font-medium">{selectedBooking.passengers?.handLuggage || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm text-gray-400">Medium Luggage</label>
-                        <p className="text-white font-medium">{selectedBooking.passengers?.mediumLuggage || 'N/A'}</p>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="text-sm text-gray-400">Baby Seat</label>
-                        <p className="text-white font-medium">{selectedBooking.passengers?.babySeat || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm text-gray-400">Child Seat</label>
-                        <p className="text-white font-medium">{selectedBooking.passengers?.childSeat || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm text-gray-400">Booster Seat</label>
-                        <p className="text-white font-medium">{selectedBooking.passengers?.boosterSeat || 'N/A'}</p>
-                      </div>
-                      <div>
-                        <label className="text-sm text-gray-400">Wheelchair</label>
-                        <p className="text-white font-medium">{selectedBooking.passengers?.wheelchair || 'N/A'}</p>
-                      </div>
+                    <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                      <label className="text-sm text-gray-400 mb-2 block">Passengers</label>
+                      <p className="text-white font-semibold">{selectedBooking.passengers?.count || '0'}</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -572,26 +512,29 @@ export default function BookingsPage() {
                 {/* Additional Information */}
                 <Card className="bg-gray-800/50 border-gray-700">
                   <CardHeader>
-                    <CardTitle className="text-cyan-300">Additional Information</CardTitle>
+                    <CardTitle className="text-white flex items-center gap-2">
+                      <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center">
+                        <CalendarIcon className="h-4 w-4 text-white" />
+                      </div>
+                      Additional Information
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3">
-                    <div>
-                      <label className="text-sm text-gray-400">Special Requests</label>
-                      <p className="text-white font-medium">{selectedBooking.specialRequests || 'None'}</p>
+                  <CardContent className="space-y-4">
+                    <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                      <label className="text-sm text-gray-400 mb-2 block">Special Requests</label>
+                      <p className="text-white font-semibold">{selectedBooking.specialRequests || 'None'}</p>
                     </div>
-                    <div>
-                      <label className="text-sm text-gray-400">Status</label>
-                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${getStatusClass(selectedBooking.status)}`}>
-                        {selectedBooking.status}
-                      </span>
+                    <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                      <label className="text-sm text-gray-400 mb-2 block">Created</label>
+                      <p className="text-white font-semibold">
+                        {new Date(selectedBooking.createdAt).toLocaleDateString()}
+                      </p>
                     </div>
-                    <div>
-                      <label className="text-sm text-gray-400">Created At</label>
-                      <p className="text-white font-medium">{new Date(selectedBooking.createdAt).toLocaleString()}</p>
-                    </div>
-                    <div>
-                      <label className="text-sm text-gray-400">Last Updated</label>
-                      <p className="text-white font-medium">{new Date(selectedBooking.updatedAt).toLocaleString()}</p>
+                    <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                      <label className="text-sm text-gray-400 mb-2 block">Last Updated</label>
+                      <p className="text-white font-semibold">
+                        {new Date(selectedBooking.updatedAt).toLocaleDateString()}
+                      </p>
                     </div>
                   </CardContent>
                 </Card>
