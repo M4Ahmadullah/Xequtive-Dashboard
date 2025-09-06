@@ -598,6 +598,67 @@ export default function CalendarPage() {
                             <p className="text-xs text-gray-400 mb-1">Dropoff</p>
                             <p className="text-white font-medium text-sm truncate">{booking.dropoffLocation}</p>
                           </div>
+                          
+                {/* NEW: Payment Methods */}
+                {booking.paymentMethods && (
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1">Payment</p>
+                    <div className="flex gap-1 flex-wrap">
+                      {booking.paymentMethods.cashOnArrival && (
+                        <span className="px-1 py-0.5 bg-green-500/20 text-green-300 text-xs rounded border border-green-500/30">
+                          Cash
+                        </span>
+                      )}
+                      {booking.paymentMethods.cardOnArrival && (
+                        <span className="px-1 py-0.5 bg-blue-500/20 text-blue-300 text-xs rounded border border-blue-500/30">
+                          Card
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Travel Information */}
+                {booking.travelInformation && (
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1">Travel</p>
+                    <p className="text-white font-medium text-xs">
+                      {booking.travelInformation.type === 'flight' && booking.travelInformation.details?.flightNumber && (
+                        `${booking.travelInformation.details.airline} ${booking.travelInformation.details.flightNumber}`
+                      )}
+                      {booking.travelInformation.type === 'train' && 'Train Journey'}
+                      {booking.travelInformation.type === 'other' && 'Other Travel'}
+                    </p>
+                  </div>
+                )}
+
+                {/* Additional Stops */}
+                {booking.additionalStops && booking.additionalStops.length > 0 && (
+                  <div>
+                    <p className="text-xs text-gray-400 mb-1">Stops</p>
+                    <p className="text-white font-medium text-xs">
+                      {booking.additionalStops.length} additional stop{booking.additionalStops.length > 1 ? 's' : ''}
+                    </p>
+                  </div>
+                )}
+
+                          {/* NEW: Wait Duration for Return Bookings */}
+                          {booking.bookingType === 'return' && booking.returnType === 'wait-and-return' && (
+                            <div>
+                              <p className="text-xs text-gray-400 mb-1">Wait Duration</p>
+                              <p className="text-white font-medium text-sm">
+                                {booking.waitDuration ? `${booking.waitDuration}h` : 'Up to 12h'}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* NEW: Hours for Hourly Bookings */}
+                          {booking.bookingType === 'hourly' && booking.hours && (
+                            <div>
+                              <p className="text-xs text-gray-400 mb-1">Duration</p>
+                              <p className="text-white font-medium text-sm">{booking.hours}h</p>
+                            </div>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
@@ -699,6 +760,137 @@ export default function CalendarPage() {
                   </CardContent>
                 </Card>
 
+                {/* NEW: Payment Methods Information */}
+                {selectedBooking.paymentMethods && (
+                  <Card className="bg-gray-800/50 border-gray-700">
+                    <CardContent className="p-4">
+                      <h3 className="text-green-300 font-semibold mb-3">Payment Methods</h3>
+                      <div className="space-y-2">
+                        <div>
+                          <label className="text-sm text-gray-400">Payment Preferences</label>
+                          <div className="flex gap-2 flex-wrap mt-1">
+                            {selectedBooking.paymentMethods.cashOnArrival && (
+                              <span className="px-2 py-1 bg-green-500/20 text-green-300 text-xs rounded-full border border-green-500/30">
+                                Cash on Arrival
+                              </span>
+                            )}
+                            {selectedBooking.paymentMethods.cardOnArrival && (
+                              <span className="px-2 py-1 bg-blue-500/20 text-blue-300 text-xs rounded-full border border-blue-500/30">
+                                Card on Arrival
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Travel Information */}
+                {selectedBooking.travelInformation && (
+                  <Card className="bg-gray-800/50 border-gray-700">
+                    <CardContent className="p-4">
+                      <h3 className="text-yellow-300 font-semibold mb-3">Travel Information</h3>
+                      <div className="space-y-2">
+                        <div>
+                          <label className="text-sm text-gray-400">Travel Type</label>
+                          <p className="text-white font-semibold capitalize">{selectedBooking.travelInformation.type || 'N/A'}</p>
+                        </div>
+                        {selectedBooking.travelInformation.details && (
+                          <div>
+                            <label className="text-sm text-gray-400">Travel Details</label>
+                            <div className="space-y-1 mt-1">
+                              {selectedBooking.travelInformation.details.flightNumber && (
+                                <p className="text-white font-semibold text-sm">
+                                  Flight: {selectedBooking.travelInformation.details.airline} {selectedBooking.travelInformation.details.flightNumber}
+                                </p>
+                              )}
+                              {selectedBooking.travelInformation.details.terminal && (
+                                <p className="text-gray-300 text-sm">
+                                  Terminal: {selectedBooking.travelInformation.details.terminal}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Additional Stops */}
+                {selectedBooking.additionalStops && selectedBooking.additionalStops.length > 0 && (
+                  <Card className="bg-gray-800/50 border-gray-700">
+                    <CardContent className="p-4">
+                      <h3 className="text-orange-300 font-semibold mb-3">Additional Stops</h3>
+                      <div className="space-y-3">
+                        {selectedBooking.additionalStops.map((stop: { address: string; coordinates?: { lat: number; lng: number } }, index: number) => (
+                          <div key={index} className="bg-gray-700/30 p-3 rounded-lg border border-gray-600/50">
+                            <div className="flex items-center gap-2 mb-2">
+                              <label className="text-sm text-gray-400">Stop {index + 1}</label>
+                            </div>
+                            <p className="text-white font-semibold text-sm">{stop.address}</p>
+                            {stop.coordinates && (
+                              <p className="text-gray-400 text-xs mt-1">
+                                Lat: {stop.coordinates.lat}, Lng: {stop.coordinates.lng}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* NEW: Return Information for Return Bookings */}
+                {selectedBooking.bookingType === 'return' && (
+                  <Card className="bg-gray-800/50 border-gray-700">
+                    <CardContent className="p-4">
+                      <h3 className="text-orange-300 font-semibold mb-3">Return Information</h3>
+                      <div className="space-y-2">
+                        <div>
+                          <label className="text-sm text-gray-400">Return Type</label>
+                          <p className="text-white font-medium capitalize">
+                            {selectedBooking.returnType?.replace('-', ' ') || 'N/A'}
+                          </p>
+                        </div>
+                        {selectedBooking.returnType === 'wait-and-return' && (
+                          <div>
+                            <label className="text-sm text-gray-400">Wait Duration</label>
+                            <p className="text-white font-medium">
+                              {selectedBooking.waitDuration ? `${selectedBooking.waitDuration} hours` : 'Up to 12 hours'}
+                            </p>
+                          </div>
+                        )}
+                        {selectedBooking.returnType === 'later-date' && selectedBooking.returnDate && (
+                          <div>
+                            <label className="text-sm text-gray-400">Return Date & Time</label>
+                            <p className="text-white font-medium">
+                              {selectedBooking.returnDate} {selectedBooking.returnTime && `at ${selectedBooking.returnTime}`}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* NEW: Duration Information for Hourly Bookings */}
+                {selectedBooking.bookingType === 'hourly' && selectedBooking.hours && (
+                  <Card className="bg-gray-800/50 border-gray-700">
+                    <CardContent className="p-4">
+                      <h3 className="text-cyan-300 font-semibold mb-3">Service Duration</h3>
+                      <div className="space-y-2">
+                        <div>
+                          <label className="text-sm text-gray-400">Duration</label>
+                          <p className="text-white font-medium">{selectedBooking.hours} hours</p>
+                          <p className="text-cyan-300 text-xs">Continuous service - driver stays with you</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Journey Details */}
                 <Card className="bg-gray-800/50 border-gray-700">
                   <CardContent className="p-4">
@@ -727,11 +919,35 @@ export default function CalendarPage() {
                     <div className="space-y-2">
                       <div>
                         <label className="text-sm text-gray-400">Pickup Location</label>
-                        <p className="text-white font-medium">{selectedBooking.pickupLocation}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-white font-medium flex-1">{selectedBooking.pickupLocation}</p>
+                          {selectedBooking.locations?.pickup?.googleMapsLink && (
+                            <a
+                              href={selectedBooking.locations.pickup.googleMapsLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors duration-200"
+                            >
+                              🗺️ Maps
+                            </a>
+                          )}
+                        </div>
                       </div>
                       <div>
                         <label className="text-sm text-gray-400">Dropoff Location</label>
-                        <p className="text-white font-medium">{selectedBooking.dropoffLocation}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-white font-medium flex-1">{selectedBooking.dropoffLocation}</p>
+                          {selectedBooking.locations?.dropoff?.googleMapsLink && (
+                            <a
+                              href={selectedBooking.locations.dropoff.googleMapsLink}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors duration-200"
+                            >
+                              🗺️ Maps
+                            </a>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </CardContent>

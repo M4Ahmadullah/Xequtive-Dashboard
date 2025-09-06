@@ -37,20 +37,35 @@ export interface User {
   totalSpent?: number;
 }
 
-// Enhanced Booking Types
+// Enhanced Booking Types - Complete Backend Data Structure
 export interface BookingDetail {
+  // =====================================================
+  // 1. CORE BOOKING INFORMATION
+  // =====================================================
   id: string;
-  referenceNumber: string;
   firebaseId: string;
+  referenceNumber: string;
+  userId: string;
+  status: "pending" | "confirmed" | "in-progress" | "completed" | "cancelled" | "declined" | "no_show";
+  bookingType: "one-way" | "hourly" | "return";
+  pickupDate: string;
+  pickupTime: string;
+  createdAt: string;
+  updatedAt: string;
+  waitingTime?: number;
+  
+  // =====================================================
+  // 2. CUSTOMER INFORMATION
+  // =====================================================
   customer: {
     fullName: string;
     email: string;
     phoneNumber: string;
   };
-  bookingType: "hourly" | "one-way" | "return";
-  status: "pending" | "confirmed" | "in-progress" | "completed" | "cancelled" | "declined" | "no_show";
-  pickupDate: string;
-  pickupTime: string;
+  
+  // =====================================================
+  // 3. LOCATION INFORMATION WITH GOOGLE MAPS LINKS
+  // =====================================================
   locations: {
     pickup: {
       address: string;
@@ -58,6 +73,7 @@ export interface BookingDetail {
         lat: number;
         lng: number;
       };
+      googleMapsLink?: string;
     };
     dropoff: {
       address: string;
@@ -65,6 +81,7 @@ export interface BookingDetail {
         lat: number;
         lng: number;
       };
+      googleMapsLink?: string;
     };
     additionalStops: Array<{
       address: string;
@@ -72,8 +89,21 @@ export interface BookingDetail {
         lat: number;
         lng: number;
       };
+      googleMapsLink?: string;
     }>;
   };
+  
+  // =====================================================
+  // 4. JOURNEY DETAILS
+  // =====================================================
+  journey: {
+    distance_miles: number;
+    duration_minutes: number;
+  };
+  
+  // =====================================================
+  // 5. VEHICLE & PRICING INFORMATION
+  // =====================================================
   vehicle: {
     id: string;
     name: string;
@@ -82,14 +112,14 @@ export interface BookingDetail {
       currency: string;
     };
   };
-  journey: {
-    distance_miles: number;
-    duration_minutes: number;
+  price?: {
+    amount: number;
+    currency: string;
   };
-  hours?: number;
-  returnType?: string;
-  returnDate?: string;
-  returnTime?: string;
+  
+  // =====================================================
+  // 6. PASSENGER & LUGGAGE DETAILS
+  // =====================================================
   passengers: {
     count: number;
     checkedLuggage?: number;
@@ -100,7 +130,15 @@ export interface BookingDetail {
     boosterSeat?: number;
     wheelchair?: number;
   };
+  
+  // =====================================================
+  // 7. SPECIAL REQUIREMENTS
+  // =====================================================
   specialRequests?: string;
+  
+  // =====================================================
+  // 8. ADDITIONAL STOPS (LEGACY FORMAT)
+  // =====================================================
   additionalStops: Array<{
     address: string;
     coordinates?: {
@@ -108,15 +146,65 @@ export interface BookingDetail {
       lng: number;
     };
   }>;
-  waitingTime: number;
-  userId: string;
-  createdAt: string;
-  updatedAt: string;
+  
+  // =====================================================
+  // 9. PAYMENT METHODS
+  // =====================================================
+  paymentMethods?: {
+    cashOnArrival: boolean;
+    cardOnArrival: boolean;
+  };
+  
+  // =====================================================
+  // 10. RETURN BOOKING INFORMATION
+  // =====================================================
+  returnType?: "wait-and-return" | "later-date";
+  returnDate?: string;
+  returnTime?: string;
+  waitDuration?: number;
+  returnDiscount?: number;
+  
+  // =====================================================
+  // 11. SERVICE DURATION (HOURLY BOOKINGS)
+  // =====================================================
+  hours?: number;
+  
+  // =====================================================
+  // 12. TRAVEL INFORMATION
+  // =====================================================
+  travelInformation?: {
+    type?: string;
+    details?: {
+      flightNumber?: string;
+      airline?: string;
+      terminal?: string;
+    };
+  };
+  
+  // =====================================================
+  // 13. BOOKING TIMELINE (STATUS HISTORY)
+  // =====================================================
   timeline?: Array<{
     status: string;
     timestamp: string;
     updatedBy?: string;
+    description?: string;
   }>;
+  
+  // =====================================================
+  // 14. SYSTEM METADATA
+  // =====================================================
+  metadata?: {
+    documentId?: string;
+    referenceNumber?: string;
+    bookingType?: string;
+    hasCoordinates?: boolean;
+    hasDropoff?: boolean;
+    hasPaymentMethod?: boolean;
+    isReturnBooking?: boolean;
+    isHourlyBooking?: boolean;
+    waitAndReturn?: boolean;
+  };
 }
 
 // Enhanced Analytics Types
@@ -262,6 +350,10 @@ export interface BookingParams {
   endDate?: string;
   vehicleType?: string;
   bookingType?: string;
+  // NEW FILTER PARAMETERS
+  returnType?: string;          // Filter by return type (wait-and-return, later-date)
+  paymentMethod?: string;       // Filter by payment method (cashOnArrival, cardOnArrival)
+  waitDuration?: string;        // Filter by wait duration range (e.g., "3-6", "7-12")
   search?: string;
   page?: number;
   limit?: number;
@@ -403,10 +495,16 @@ export interface CalendarEvent {
   dropoffLocation: string;
   vehicleType: string;
   vehicleId: string;
-  hours?: number;
-  returnType?: string;
-  returnDate?: string;
-  returnTime?: string;
+  // NEW FIELDS - Complete Backend Data
+  hours?: number;                    // For hourly bookings
+  returnType?: "wait-and-return" | "later-date"; // For return bookings
+  returnDate?: string;               // For later-date returns
+  returnTime?: string;               // For later-date returns
+  waitDuration?: number;             // For wait-and-return bookings
+  paymentMethods?: {                 // Payment method preferences
+    cashOnArrival: boolean;
+    cardOnArrival: boolean;
+  };
   distance_miles: number;
   duration_minutes: number;
   price: {
@@ -421,6 +519,43 @@ export interface CalendarEvent {
     };
   }>;
   specialRequests?: string;
+  // Additional fields from complete backend structure
+  locations?: {
+    pickup?: {
+      address?: string;
+      coordinates?: {
+        lat: number;
+        lng: number;
+      };
+      googleMapsLink?: string;
+    };
+    dropoff?: {
+      address?: string;
+      coordinates?: {
+        lat: number;
+        lng: number;
+      };
+      googleMapsLink?: string;
+    };
+  };
+  passengers?: {
+    count?: number;
+    checkedLuggage?: number;
+    handLuggage?: number;
+    mediumLuggage?: number;
+    babySeat?: number;
+    childSeat?: number;
+    boosterSeat?: number;
+    wheelchair?: number;
+  };
+  travelInformation?: {
+    type?: string;
+    details?: {
+      flightNumber?: string;
+      airline?: string;
+      terminal?: string;
+    };
+  };
 }
 
 // Vehicle Types
@@ -480,4 +615,98 @@ export interface SystemLog {
   level: "info" | "warn" | "error";
   message: string;
   metadata: Record<string, string | number | boolean>;
+}
+
+// NEW ANALYTICS TYPES
+
+// Payment Method Analytics
+export interface PaymentMethodAnalytics {
+  total: number;
+  withPaymentMethods: number;
+  withoutPaymentMethods: number;
+  byMethod: {
+    cashOnArrival: number;
+    cardOnArrival: number;
+    both: number;
+  };
+  byBookingType: {
+    hourly: { cash: number; card: number; both: number; none: number };
+    "one-way": { cash: number; card: number; both: number; none: number };
+    return: { cash: number; card: number; both: number; none: number };
+  };
+  revenue: {
+    cashOnArrival: number;
+    cardOnArrival: number;
+    both: number;
+    none: number;
+  };
+  percentages: {
+    withPaymentMethods: number;
+    withoutPaymentMethods: number;
+    byMethod: {
+      cashOnArrival: number;
+      cardOnArrival: number;
+      both: number;
+    };
+  };
+  paymentMethodDefinitions: {
+    cashOnArrival: string;
+    cardOnArrival: string;
+    both: string;
+    none: string;
+  };
+}
+
+// Wait Timer Analytics
+export interface WaitTimerAnalytics {
+  totalReturnBookings: number;
+  waitAndReturnBookings: number;
+  laterDateBookings: number;
+  withWaitDuration: number;
+  withoutWaitDuration: number;
+  waitDurationDistribution: {
+    "0-2": number;
+    "3-4": number;
+    "5-6": number;
+    "7-8": number;
+    "9-10": number;
+    "11-12": number;
+  };
+  averageWaitDuration: number;
+  totalWaitDuration: number;
+  byBookingType: {
+    waitAndReturn: {
+      withTimer: number;
+      withoutTimer: number;
+      averageDuration: number;
+    };
+  };
+  percentages: {
+    waitAndReturn: number;
+    laterDate: number;
+    withTimer: number;
+    withoutTimer: number;
+  };
+  waitTimerDefinitions: {
+    waitAndReturn: string;
+    laterDate: string;
+    withTimer: string;
+    withoutTimer: string;
+  };
+}
+
+// Filter Options
+export interface FilterOptions {
+  bookingTypes: string[];
+  returnTypes: string[];
+  paymentMethods: string[];
+  waitDurationRanges: string[];
+  vehicleTypes: string[];
+  statuses: string[];
+  filterDefinitions: {
+    bookingTypes: Record<string, string>;
+    returnTypes: Record<string, string>;
+    paymentMethods: Record<string, string>;
+    waitDurationRanges: Record<string, string>;
+  };
 }

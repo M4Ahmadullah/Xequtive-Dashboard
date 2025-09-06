@@ -12,7 +12,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { bookingsAPI } from "@/lib/api";
+import { bookingsAPI, filterOptionsAPI } from "@/lib/api";
+import { FilterOptions } from "@/types/api";
 
 export default function BookingsPage() {
   const [bookings, setBookings] = useState<BookingDetail[]>([]);
@@ -24,12 +25,40 @@ export default function BookingsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [downloadTimeframe, setDownloadTimeframe] = useState("lastMonth");
   const [isDownloading, setIsDownloading] = useState(false);
+  
+  // NEW FILTER STATES
+  const [filterOptions, setFilterOptions] = useState<FilterOptions | null>(null);
+  const [selectedBookingType, setSelectedBookingType] = useState<string>("all");
+  const [selectedReturnType, setSelectedReturnType] = useState<string>("all");
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("all");
+  const [selectedWaitDuration, setSelectedWaitDuration] = useState<string>("all");
+
+  const fetchFilterOptions = useCallback(async () => {
+    try {
+      const response = await filterOptionsAPI.getFilterOptions();
+      if (response.success && response.data) {
+        setFilterOptions(response.data);
+      }
+    } catch (error) {
+      console.error('Error fetching filter options:', error);
+    }
+  }, []);
 
   const fetchBookings = useCallback(
     async () => {
       setLoading(true);
       try {
-        const response = await bookingsAPI.getAllBookings();
+        const params: Record<string, string> = {};
+        
+        // Apply filters
+        if (selectedBookingType !== "all") params.bookingType = selectedBookingType;
+        if (selectedReturnType !== "all") params.returnType = selectedReturnType;
+        if (selectedPaymentMethod !== "all") params.paymentMethod = selectedPaymentMethod;
+        if (selectedWaitDuration !== "all") params.waitDuration = selectedWaitDuration;
+        if (activeTab !== "all") params.status = activeTab;
+        if (searchQuery) params.search = searchQuery;
+
+        const response = await bookingsAPI.getAllBookings(params);
 
         if (response.success && response.data?.bookings) {
           setBookings(response.data.bookings);
@@ -43,12 +72,13 @@ export default function BookingsPage() {
         setLoading(false);
       }
     },
-    []
+    [selectedBookingType, selectedReturnType, selectedPaymentMethod, selectedWaitDuration, activeTab, searchQuery]
   );
 
   useEffect(() => {
+    fetchFilterOptions();
     fetchBookings();
-  }, [fetchBookings]);
+  }, [fetchFilterOptions, fetchBookings]);
 
   const openBookingModal = (booking: BookingDetail) => {
     setSelectedBooking(booking);
@@ -259,22 +289,27 @@ export default function BookingsPage() {
 
       {/* Enhanced Search & Filters */}
       <div className="mb-8">
-        <div className="flex flex-col md:flex-row gap-4 items-center">
-          <div className="flex-1">
-            <div className="relative group">
-              <input
-                type="text"
-                placeholder="Search bookings by customer, vehicle, or location..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full px-6 py-4 bg-gray-800/50 border border-gray-600 text-white placeholder-gray-400 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 group-hover:border-gray-500"
-              />
-              <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                <CalendarIcon className="h-5 w-5 text-gray-400" />
+        <div className="flex flex-col gap-6">
+          {/* Search Bar */}
+          <div className="flex flex-col md:flex-row gap-4 items-center">
+            <div className="flex-1">
+              <div className="relative group">
+                <input
+                  type="text"
+                  placeholder="Search bookings by customer, vehicle, or location..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-6 py-4 bg-gray-800/50 border border-gray-600 text-white placeholder-gray-400 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 group-hover:border-gray-500"
+                />
+                <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                  <CalendarIcon className="h-5 w-5 text-gray-400" />
+                </div>
               </div>
             </div>
           </div>
-          <div className="flex gap-3">
+
+          {/* Status Filters */}
+          <div className="flex gap-3 flex-wrap">
             <Button
               onClick={() => setActiveTab("all")}
               className={`px-6 py-3 rounded-xl transition-all duration-300 ${
@@ -316,73 +351,294 @@ export default function BookingsPage() {
               Completed ({bookings.filter(b => b.status === 'completed').length})
             </Button>
           </div>
+
+          {/* NEW: Advanced Filters */}
+          {filterOptions && (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Booking Type Filter */}
+              <div>
+                <label className="text-sm text-gray-400 mb-2 block">Booking Type</label>
+                <Select value={selectedBookingType} onValueChange={setSelectedBookingType}>
+                  <SelectTrigger className="w-full bg-gray-800/50 border-gray-600 text-white hover:border-blue-500 transition-colors duration-300">
+                    <SelectValue placeholder="All Types" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-800 border-gray-600 text-white">
+                    <SelectItem value="all" className="hover:bg-gray-700 focus:bg-gray-700">All Types</SelectItem>
+                    {filterOptions.bookingTypes.map((type) => (
+                      <SelectItem key={type} value={type} className="hover:bg-gray-700 focus:bg-gray-700">
+                        {type.charAt(0).toUpperCase() + type.slice(1).replace('-', ' ')}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Return Type Filter */}
+              <div>
+                <label className="text-sm text-gray-400 mb-2 block">Return Type</label>
+                <Select value={selectedReturnType} onValueChange={setSelectedReturnType}>
+                  <SelectTrigger className="w-full bg-gray-800/50 border-gray-600 text-white hover:border-blue-500 transition-colors duration-300">
+                    <SelectValue placeholder="All Return Types" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-800 border-gray-600 text-white">
+                    <SelectItem value="all" className="hover:bg-gray-700 focus:bg-gray-700">All Return Types</SelectItem>
+                    {filterOptions.returnTypes.map((type) => (
+                      <SelectItem key={type} value={type} className="hover:bg-gray-700 focus:bg-gray-700">
+                        {type.charAt(0).toUpperCase() + type.slice(1).replace('-', ' ')}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Payment Method Filter */}
+              <div>
+                <label className="text-sm text-gray-400 mb-2 block">Payment Method</label>
+                <Select value={selectedPaymentMethod} onValueChange={setSelectedPaymentMethod}>
+                  <SelectTrigger className="w-full bg-gray-800/50 border-gray-600 text-white hover:border-blue-500 transition-colors duration-300">
+                    <SelectValue placeholder="All Payment Methods" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-800 border-gray-600 text-white">
+                    <SelectItem value="all" className="hover:bg-gray-700 focus:bg-gray-700">All Payment Methods</SelectItem>
+                    {filterOptions.paymentMethods.map((method) => (
+                      <SelectItem key={method} value={method} className="hover:bg-gray-700 focus:bg-gray-700">
+                        {method.charAt(0).toUpperCase() + method.slice(1).replace(/([A-Z])/g, ' $1')}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Wait Duration Filter */}
+              <div>
+                <label className="text-sm text-gray-400 mb-2 block">Wait Duration</label>
+                <Select value={selectedWaitDuration} onValueChange={setSelectedWaitDuration}>
+                  <SelectTrigger className="w-full bg-gray-800/50 border-gray-600 text-white hover:border-blue-500 transition-colors duration-300">
+                    <SelectValue placeholder="All Wait Durations" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-gray-800 border-gray-600 text-white">
+                    <SelectItem value="all" className="hover:bg-gray-700 focus:bg-gray-700">All Wait Durations</SelectItem>
+                    {filterOptions.waitDurationRanges.map((range) => (
+                      <SelectItem key={range} value={range} className="hover:bg-gray-700 focus:bg-gray-700">
+                        {range} hours
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Enhanced Booking Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 gap-6">
+      {/* Enhanced Booking Cards - Compact Design */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {filteredBookings.map((booking) => (
-          <Card key={booking.id} className="group bg-gradient-to-br from-gray-900/80 to-gray-800/60 border border-gray-700 hover:border-blue-500/50 hover:shadow-2xl transition-all duration-700 transform hover:-translate-y-2 hover:scale-105 overflow-hidden">
+          <Card key={booking.id} className="group bg-gradient-to-br from-gray-900/80 to-gray-800/60 border border-gray-700 hover:border-blue-500/50 hover:shadow-2xl transition-all duration-700 transform hover:-translate-y-1 hover:scale-105 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-            <CardHeader className="bg-gradient-to-r from-blue-900/50 to-purple-800/30 border-b border-blue-700/50 relative">
+            
+            {/* Header */}
+            <CardHeader className="bg-gradient-to-r from-blue-900/50 to-purple-800/30 border-b border-blue-700/50 relative pb-3">
               <div className="flex justify-between items-start">
                 <CardTitle className="text-lg text-white group-hover:text-blue-300 transition-colors duration-300">
                   {booking.referenceNumber || 'N/A'}
                 </CardTitle>
-                <div className={`px-3 py-1.5 rounded-full text-xs font-medium border transition-all duration-300 ${getStatusClass(booking.status)}`}>
+                <div className={`px-2 py-1 rounded-full text-xs font-medium border transition-all duration-300 ${getStatusClass(booking.status)}`}>
                   {booking.status}
                 </div>
               </div>
-              <p className="text-sm text-gray-300 mt-2">
+              <p className="text-sm text-gray-300 mt-1">
                 {booking.bookingType || 'N/A'} • {booking.pickupDate} at {booking.pickupTime}
               </p>
             </CardHeader>
-            <CardContent className="pt-6 relative">
-              <div className="space-y-4">
-                <div className="bg-gray-800/30 p-4 rounded-xl border border-gray-700/50 hover:border-blue-500/50 transition-all duration-300">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-                      <CalendarIcon className="h-4 w-4 text-white" />
-                    </div>
-                    <p className="text-xs text-blue-400 font-semibold uppercase tracking-wide">Customer</p>
+
+            {/* Compact Content - All in One Container */}
+            <CardContent className="p-4 relative">
+              <div className="space-y-3">
+                {/* Customer Info */}
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                    <CalendarIcon className="h-3 w-3 text-blue-400" />
                   </div>
-                  <p className="font-semibold text-white text-sm">{booking.customer?.fullName || 'N/A'}</p>
-                  <p className="text-gray-300 text-xs">{booking.customer?.email || 'N/A'}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-white text-sm truncate">{booking.customer?.fullName || 'N/A'}</p>
+                    <p className="text-gray-400 text-xs truncate">{booking.customer?.email || 'N/A'}</p>
+                  </div>
                 </div>
 
-                <div className="bg-gray-800/30 p-4 rounded-xl border border-gray-700/50 hover:border-purple-500/50 transition-all duration-300">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-purple-600 rounded-lg flex items-center justify-center">
-                      <CalendarIcon className="h-4 w-4 text-white" />
-                    </div>
-                    <p className="text-xs text-purple-400 font-semibold uppercase tracking-wide">Journey</p>
+                {/* Journey Info with Google Maps */}
+                <div className="flex items-start gap-2">
+                  <div className="w-6 h-6 bg-purple-500/20 rounded-lg flex items-center justify-center mt-0.5">
+                    <CalendarIcon className="h-3 w-3 text-purple-400" />
                   </div>
-                  <p className="text-white text-sm mb-1">
-                    <span className="text-gray-400">From:</span> {booking.locations?.pickup?.address || 'N/A'}
-                  </p>
-                  <p className="text-white text-sm">
-                    <span className="text-gray-400">To:</span> {booking.locations?.dropoff?.address || 'N/A'}
-                  </p>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1 mb-1">
+                      <p className="text-white text-xs truncate">
+                        <span className="text-gray-400">From:</span> {booking.locations?.pickup?.address || 'N/A'}
+                      </p>
+                      {booking.locations?.pickup?.googleMapsLink && (
+                        <a
+                          href={booking.locations.pickup.googleMapsLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-400 hover:text-blue-300 text-xs"
+                          title="Open in Google Maps"
+                        >
+                          🗺️
+                        </a>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1">
+                      <p className="text-white text-xs truncate">
+                        <span className="text-gray-400">To:</span> {booking.locations?.dropoff?.address || 'N/A'}
+                      </p>
+                      {booking.locations?.dropoff?.googleMapsLink && (
+                        <a
+                          href={booking.locations.dropoff.googleMapsLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-blue-400 hover:text-blue-300 text-xs"
+                          title="Open in Google Maps"
+                        >
+                          🗺️
+                        </a>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
-                <div className="bg-gray-800/30 p-4 rounded-xl border border-gray-700/50 hover:border-emerald-500/50 transition-all duration-300">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center">
-                      <CalendarIcon className="h-4 w-4 text-white" />
-                    </div>
-                    <p className="text-xs text-emerald-400 font-semibold uppercase tracking-wide">Vehicle & Price</p>
+                {/* Vehicle & Price */}
+                <div className="flex items-center gap-2">
+                  <div className="w-6 h-6 bg-emerald-500/20 rounded-lg flex items-center justify-center">
+                    <CalendarIcon className="h-3 w-3 text-emerald-400" />
                   </div>
-                  <p className="font-semibold text-white text-sm">{booking.vehicle?.name || 'N/A'}</p>
-                  <p className="text-emerald-300 text-lg font-bold">
-                    £{booking.vehicle?.price?.amount?.toLocaleString() || '0'}
-                  </p>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-white text-sm truncate">{booking.vehicle?.name || 'N/A'}</p>
+                    <p className="text-emerald-300 text-sm font-bold">
+                      £{booking.vehicle?.price?.amount?.toLocaleString() || '0'}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Payment Methods - Compact */}
+                {booking.paymentMethods && (
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                      <CalendarIcon className="h-3 w-3 text-blue-400" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-gray-400 text-xs mb-1">Payment</p>
+                      <div className="flex gap-1 flex-wrap">
+                        {booking.paymentMethods.cashOnArrival && (
+                          <span className="px-1.5 py-0.5 bg-green-500/20 text-green-300 text-xs rounded border border-green-500/30">
+                            Cash
+                          </span>
+                        )}
+                        {booking.paymentMethods.cardOnArrival && (
+                          <span className="px-1.5 py-0.5 bg-blue-500/20 text-blue-300 text-xs rounded border border-blue-500/30">
+                            Card
+                          </span>
+                        )}
+                        {!booking.paymentMethods.cashOnArrival && !booking.paymentMethods.cardOnArrival && (
+                          <span className="px-1.5 py-0.5 bg-gray-500/20 text-gray-300 text-xs rounded border border-gray-500/30">
+                            Not Specified
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Wait Duration for Return Bookings - Compact */}
+                {booking.bookingType === 'return' && booking.returnType === 'wait-and-return' && (
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                      <CalendarIcon className="h-3 w-3 text-purple-400" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-gray-400 text-xs">Wait Duration</p>
+                      <p className="text-white text-sm font-semibold">
+                        {booking.waitDuration ? `${booking.waitDuration}h` : 'Up to 12h'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Return Date for Later-Date Returns - Compact */}
+                {booking.bookingType === 'return' && booking.returnType === 'later-date' && booking.returnDate && (
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 bg-orange-500/20 rounded-lg flex items-center justify-center">
+                      <CalendarIcon className="h-3 w-3 text-orange-400" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-gray-400 text-xs">Return Date</p>
+                      <p className="text-white text-sm font-semibold">
+                        {booking.returnDate} {booking.returnTime && `at ${booking.returnTime}`}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Hours for Hourly Bookings - Compact */}
+                {booking.bookingType === 'hourly' && booking.hours && (
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 bg-cyan-500/20 rounded-lg flex items-center justify-center">
+                      <CalendarIcon className="h-3 w-3 text-cyan-400" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-gray-400 text-xs">Duration</p>
+                      <p className="text-white text-sm font-semibold">{booking.hours}h</p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Travel Information */}
+                {booking.travelInformation && (
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 bg-yellow-500/20 rounded-lg flex items-center justify-center">
+                      <CalendarIcon className="h-3 w-3 text-yellow-400" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-gray-400 text-xs">Travel Info</p>
+                      <p className="text-white text-sm font-semibold">
+                        {booking.travelInformation.type === 'flight' && booking.travelInformation.details?.flightNumber && (
+                          `${booking.travelInformation.details.airline} ${booking.travelInformation.details.flightNumber}`
+                        )}
+                        {booking.travelInformation.type === 'train' && 'Train Journey'}
+                        {booking.travelInformation.type === 'other' && 'Other Travel'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Additional Stops */}
+                {booking.locations?.additionalStops && booking.locations.additionalStops.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 bg-orange-500/20 rounded-lg flex items-center justify-center">
+                      <CalendarIcon className="h-3 w-3 text-orange-400" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-gray-400 text-xs">Additional Stops</p>
+                      <p className="text-white text-sm font-semibold">
+                        {booking.locations.additionalStops.length} stop{booking.locations.additionalStops.length > 1 ? 's' : ''}
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Additional Info - Distance, Duration, Passengers */}
+                <div className="flex items-center justify-between text-xs text-gray-400 pt-2 border-t border-gray-700/50">
+                  <span>{booking.journey?.distance_miles || '0'} miles</span>
+                  <span>{booking.journey?.duration_minutes || '0'} min</span>
+                  <span>{booking.passengers?.count || '0'} pax</span>
                 </div>
               </div>
 
-              <div className="flex justify-end mt-6">
+              {/* View Details Button */}
+              <div className="flex justify-end mt-4">
                 <button
                   onClick={() => openBookingModal(booking)}
-                  className="px-8 py-3 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-xl hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 transition-all duration-300 transform hover:scale-105 font-medium shadow-lg hover:shadow-xl"
+                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-blue-700 text-white rounded-lg hover:from-blue-700 hover:to-blue-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900 transition-all duration-300 transform hover:scale-105 font-medium text-sm shadow-lg hover:shadow-xl"
                 >
                   View Details
                 </button>
@@ -426,7 +682,7 @@ export default function BookingsPage() {
             </div>
             
             <div className="p-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
                 {/* Customer Information */}
                 <Card className="bg-gray-800/50 border-gray-700">
                   <CardHeader>
@@ -466,16 +722,56 @@ export default function BookingsPage() {
                   <CardContent className="space-y-4">
                     <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
                       <label className="text-sm text-gray-400 mb-2 block">Pickup Location</label>
-                      <p className="text-white font-semibold">{selectedBooking.locations?.pickup?.address || 'N/A'}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-white font-semibold flex-1">{selectedBooking.locations?.pickup?.address || 'N/A'}</p>
+                        {selectedBooking.locations?.pickup?.googleMapsLink && (
+                          <a
+                            href={selectedBooking.locations.pickup.googleMapsLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg transition-colors duration-200"
+                          >
+                            🗺️ Open Maps
+                          </a>
+                        )}
+                      </div>
+                      {selectedBooking.locations?.pickup?.coordinates && (
+                        <p className="text-gray-400 text-xs mt-1">
+                          Lat: {selectedBooking.locations.pickup.coordinates.lat}, Lng: {selectedBooking.locations.pickup.coordinates.lng}
+                        </p>
+                      )}
                     </div>
                     <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
                       <label className="text-sm text-gray-400 mb-2 block">Dropoff Location</label>
-                      <p className="text-white font-semibold">{selectedBooking.locations?.dropoff?.address || 'N/A'}</p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-white font-semibold flex-1">{selectedBooking.locations?.dropoff?.address || 'N/A'}</p>
+                        {selectedBooking.locations?.dropoff?.googleMapsLink && (
+                          <a
+                            href={selectedBooking.locations.dropoff.googleMapsLink}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg transition-colors duration-200"
+                          >
+                            🗺️ Open Maps
+                          </a>
+                        )}
+                      </div>
+                      {selectedBooking.locations?.dropoff?.coordinates && (
+                        <p className="text-gray-400 text-xs mt-1">
+                          Lat: {selectedBooking.locations.dropoff.coordinates.lat}, Lng: {selectedBooking.locations.dropoff.coordinates.lng}
+                        </p>
+                      )}
                     </div>
                     <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
                       <label className="text-sm text-gray-400 mb-2 block">Distance & Duration</label>
                       <p className="text-white font-semibold">
                         {selectedBooking.journey?.distance_miles || '0'} miles • {selectedBooking.journey?.duration_minutes || '0'} minutes
+                      </p>
+                    </div>
+                    <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                      <label className="text-sm text-gray-400 mb-2 block">Pickup Date & Time</label>
+                      <p className="text-white font-semibold">
+                        {selectedBooking.pickupDate} at {selectedBooking.pickupTime}
                       </p>
                     </div>
                   </CardContent>
@@ -495,12 +791,14 @@ export default function BookingsPage() {
                     <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
                       <label className="text-sm text-gray-400 mb-2 block">Vehicle Type</label>
                       <p className="text-white font-semibold">{selectedBooking.vehicle?.name || 'N/A'}</p>
+                      <p className="text-gray-400 text-xs mt-1">ID: {selectedBooking.vehicle?.id || 'N/A'}</p>
                     </div>
                     <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
                       <label className="text-sm text-gray-400 mb-2 block">Price</label>
                       <p className="text-emerald-300 text-2xl font-bold">
                         £{selectedBooking.vehicle?.price?.amount?.toLocaleString() || '0'}
                       </p>
+                      <p className="text-gray-400 text-xs mt-1">Currency: {selectedBooking.vehicle?.price?.currency || 'GBP'}</p>
                     </div>
                     <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
                       <label className="text-sm text-gray-400 mb-2 block">Passengers</label>
@@ -509,35 +807,413 @@ export default function BookingsPage() {
                   </CardContent>
                 </Card>
 
-                {/* Additional Information */}
+                {/* Payment Methods Information */}
+                <Card className="bg-gray-800/50 border-gray-700">
+                  <CardHeader>
+                    <CardTitle className="text-white flex items-center gap-2">
+                      <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+                        <CalendarIcon className="h-4 w-4 text-white" />
+                      </div>
+                      Payment Methods
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                      <label className="text-sm text-gray-400 mb-2 block">Payment Preferences</label>
+                      {selectedBooking.paymentMethods ? (
+                        <div className="flex gap-2 flex-wrap">
+                          {selectedBooking.paymentMethods.cashOnArrival && (
+                            <span className="px-3 py-1 bg-green-500/20 text-green-300 text-sm rounded-full border border-green-500/30">
+                              Cash on Arrival
+                            </span>
+                          )}
+                          {selectedBooking.paymentMethods.cardOnArrival && (
+                            <span className="px-3 py-1 bg-blue-500/20 text-blue-300 text-sm rounded-full border border-blue-500/30">
+                              Card on Arrival
+                            </span>
+                          )}
+                          {!selectedBooking.paymentMethods.cashOnArrival && !selectedBooking.paymentMethods.cardOnArrival && (
+                            <span className="px-3 py-1 bg-gray-500/20 text-gray-300 text-sm rounded-full border border-gray-500/30">
+                              Not Specified
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-gray-400 text-sm">No payment method information available</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Return Information for Return Bookings */}
+                {selectedBooking.bookingType === 'return' && (
+                  <Card className="bg-gray-800/50 border-gray-700">
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
+                          <CalendarIcon className="h-4 w-4 text-white" />
+                        </div>
+                        Return Information
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                        <label className="text-sm text-gray-400 mb-2 block">Return Type</label>
+                        <p className="text-white font-semibold capitalize">
+                          {selectedBooking.returnType?.replace('-', ' ') || 'N/A'}
+                        </p>
+                      </div>
+                      {selectedBooking.returnType === 'wait-and-return' && (
+                        <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                          <label className="text-sm text-gray-400 mb-2 block">Wait Duration</label>
+                          <p className="text-white font-semibold">
+                            {selectedBooking.waitDuration ? `${selectedBooking.waitDuration} hours` : 'Up to 12 hours'}
+                          </p>
+                        </div>
+                      )}
+                      {selectedBooking.returnType === 'later-date' && selectedBooking.returnDate && (
+                        <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                          <label className="text-sm text-gray-400 mb-2 block">Return Date & Time</label>
+                          <p className="text-white font-semibold">
+                            {selectedBooking.returnDate} {selectedBooking.returnTime && `at ${selectedBooking.returnTime}`}
+                          </p>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Duration Information for Hourly Bookings */}
+                {selectedBooking.bookingType === 'hourly' && selectedBooking.hours && (
+                  <Card className="bg-gray-800/50 border-gray-700">
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <div className="w-8 h-8 bg-cyan-600 rounded-lg flex items-center justify-center">
+                          <CalendarIcon className="h-4 w-4 text-white" />
+                        </div>
+                        Service Duration
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                        <label className="text-sm text-gray-400 mb-2 block">Duration</label>
+                        <p className="text-white font-semibold">{selectedBooking.hours} hours</p>
+                        <p className="text-cyan-300 text-sm">Continuous service - driver stays with you</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Luggage & Special Requirements */}
                 <Card className="bg-gray-800/50 border-gray-700">
                   <CardHeader>
                     <CardTitle className="text-white flex items-center gap-2">
                       <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center">
                         <CalendarIcon className="h-4 w-4 text-white" />
                       </div>
-                      Additional Information
+                      Luggage & Requirements
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                      <label className="text-sm text-gray-400 mb-2 block">Passenger Details</label>
+                      <div className="grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                          <span className="text-gray-400">Count:</span>
+                          <span className="text-white ml-2">{selectedBooking.passengers?.count || '0'}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Checked Luggage:</span>
+                          <span className="text-white ml-2">{selectedBooking.passengers?.checkedLuggage || '0'}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Hand Luggage:</span>
+                          <span className="text-white ml-2">{selectedBooking.passengers?.handLuggage || '0'}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Medium Luggage:</span>
+                          <span className="text-white ml-2">{selectedBooking.passengers?.mediumLuggage || '0'}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Baby Seat:</span>
+                          <span className="text-white ml-2">{selectedBooking.passengers?.babySeat || '0'}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Child Seat:</span>
+                          <span className="text-white ml-2">{selectedBooking.passengers?.childSeat || '0'}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Booster Seat:</span>
+                          <span className="text-white ml-2">{selectedBooking.passengers?.boosterSeat || '0'}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Wheelchair:</span>
+                          <span className="text-white ml-2">{selectedBooking.passengers?.wheelchair || '0'}</span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
                       <label className="text-sm text-gray-400 mb-2 block">Special Requests</label>
                       <p className="text-white font-semibold">{selectedBooking.specialRequests || 'None'}</p>
                     </div>
+                  </CardContent>
+                </Card>
+
+                {/* Travel Information */}
+                {selectedBooking.travelInformation && (
+                  <Card className="bg-gray-800/50 border-gray-700">
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <div className="w-8 h-8 bg-yellow-600 rounded-lg flex items-center justify-center">
+                          <CalendarIcon className="h-4 w-4 text-white" />
+                        </div>
+                        Travel Information
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                        <label className="text-sm text-gray-400 mb-2 block">Travel Type</label>
+                        <p className="text-white font-semibold capitalize">{selectedBooking.travelInformation.type || 'N/A'}</p>
+                      </div>
+                      {selectedBooking.travelInformation.details && (
+                        <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                          <label className="text-sm text-gray-400 mb-2 block">Travel Details</label>
+                          <div className="space-y-2">
+                            {selectedBooking.travelInformation.details.flightNumber && (
+                              <p className="text-white font-semibold">
+                                Flight: {selectedBooking.travelInformation.details.airline} {selectedBooking.travelInformation.details.flightNumber}
+                              </p>
+                            )}
+                            {selectedBooking.travelInformation.details.terminal && (
+                              <p className="text-gray-300 text-sm">
+                                Terminal: {selectedBooking.travelInformation.details.terminal}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Additional Stops */}
+                {selectedBooking.locations?.additionalStops && selectedBooking.locations.additionalStops.length > 0 && (
+                  <Card className="bg-gray-800/50 border-gray-700">
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <div className="w-8 h-8 bg-orange-600 rounded-lg flex items-center justify-center">
+                          <CalendarIcon className="h-4 w-4 text-white" />
+                        </div>
+                        Additional Stops
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {selectedBooking.locations.additionalStops.map((stop, index) => (
+                        <div key={index} className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                          <div className="flex items-center gap-2 mb-2">
+                            <label className="text-sm text-gray-400">Stop {index + 1}</label>
+                            {stop.googleMapsLink && (
+                              <a
+                                href={stop.googleMapsLink}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors duration-200"
+                              >
+                                🗺️ Maps
+                              </a>
+                            )}
+                          </div>
+                          <p className="text-white font-semibold">{stop.address}</p>
+                          {stop.coordinates && (
+                            <p className="text-gray-400 text-xs mt-1">
+                              Lat: {stop.coordinates.lat}, Lng: {stop.coordinates.lng}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Legacy Additional Stops */}
+                {selectedBooking.additionalStops && selectedBooking.additionalStops.length > 0 && (
+                  <Card className="bg-gray-800/50 border-gray-700">
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <div className="w-8 h-8 bg-yellow-600 rounded-lg flex items-center justify-center">
+                          <CalendarIcon className="h-4 w-4 text-white" />
+                        </div>
+                        Additional Stops (Legacy)
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {selectedBooking.additionalStops.map((stop, index) => (
+                        <div key={index} className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                          <label className="text-sm text-gray-400 mb-2 block">Stop {index + 1}</label>
+                          <p className="text-white font-semibold">{stop.address}</p>
+                          {stop.coordinates && (
+                            <p className="text-gray-400 text-xs mt-1">
+                              Lat: {stop.coordinates.lat}, Lng: {stop.coordinates.lng}
+                            </p>
+                          )}
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* System Information */}
+                <Card className="bg-gray-800/50 border-gray-700">
+                  <CardHeader>
+                    <CardTitle className="text-white flex items-center gap-2">
+                      <div className="w-8 h-8 bg-gray-600 rounded-lg flex items-center justify-center">
+                        <CalendarIcon className="h-4 w-4 text-white" />
+                      </div>
+                      System Information
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
                     <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
-                      <label className="text-sm text-gray-400 mb-2 block">Created</label>
+                      <label className="text-sm text-gray-400 mb-2 block">Booking ID</label>
+                      <p className="text-white font-semibold text-xs font-mono">{selectedBooking.id}</p>
+                    </div>
+                    <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                      <label className="text-sm text-gray-400 mb-2 block">Firebase ID</label>
+                      <p className="text-white font-semibold text-xs font-mono">{selectedBooking.firebaseId}</p>
+                    </div>
+                    <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                      <label className="text-sm text-gray-400 mb-2 block">User ID</label>
+                      <p className="text-white font-semibold text-xs font-mono">{selectedBooking.userId}</p>
+                    </div>
+                    <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                      <label className="text-sm text-gray-400 mb-2 block">Waiting Time</label>
+                      <p className="text-white font-semibold">{selectedBooking.waitingTime || '0'} minutes</p>
+                    </div>
+                    <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                      <label className="text-sm text-gray-400 mb-2 block">Created At</label>
                       <p className="text-white font-semibold">
-                        {new Date(selectedBooking.createdAt).toLocaleDateString()}
+                        {new Date(selectedBooking.createdAt).toLocaleString()}
                       </p>
                     </div>
                     <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
                       <label className="text-sm text-gray-400 mb-2 block">Last Updated</label>
                       <p className="text-white font-semibold">
-                        {new Date(selectedBooking.updatedAt).toLocaleDateString()}
+                        {new Date(selectedBooking.updatedAt).toLocaleString()}
                       </p>
                     </div>
                   </CardContent>
                 </Card>
+
+                {/* System Metadata */}
+                {selectedBooking.metadata && (
+                  <Card className="bg-gray-800/50 border-gray-700">
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+                          <CalendarIcon className="h-4 w-4 text-white" />
+                        </div>
+                        System Metadata
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                          <label className="text-sm text-gray-400 mb-2 block">Has Coordinates</label>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            selectedBooking.metadata.hasCoordinates 
+                              ? 'bg-green-500/20 text-green-300 border border-green-500/30' 
+                              : 'bg-red-500/20 text-red-300 border border-red-500/30'
+                          }`}>
+                            {selectedBooking.metadata.hasCoordinates ? 'Yes' : 'No'}
+                          </span>
+                        </div>
+                        <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                          <label className="text-sm text-gray-400 mb-2 block">Has Dropoff</label>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            selectedBooking.metadata.hasDropoff 
+                              ? 'bg-green-500/20 text-green-300 border border-green-500/30' 
+                              : 'bg-red-500/20 text-red-300 border border-red-500/30'
+                          }`}>
+                            {selectedBooking.metadata.hasDropoff ? 'Yes' : 'No'}
+                          </span>
+                        </div>
+                        <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                          <label className="text-sm text-gray-400 mb-2 block">Has Payment Method</label>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            selectedBooking.metadata.hasPaymentMethod 
+                              ? 'bg-green-500/20 text-green-300 border border-green-500/30' 
+                              : 'bg-red-500/20 text-red-300 border border-red-500/30'
+                          }`}>
+                            {selectedBooking.metadata.hasPaymentMethod ? 'Yes' : 'No'}
+                          </span>
+                        </div>
+                        <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                          <label className="text-sm text-gray-400 mb-2 block">Is Return Booking</label>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            selectedBooking.metadata.isReturnBooking 
+                              ? 'bg-green-500/20 text-green-300 border border-green-500/30' 
+                              : 'bg-red-500/20 text-red-300 border border-red-500/30'
+                          }`}>
+                            {selectedBooking.metadata.isReturnBooking ? 'Yes' : 'No'}
+                          </span>
+                        </div>
+                        <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                          <label className="text-sm text-gray-400 mb-2 block">Is Hourly Booking</label>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            selectedBooking.metadata.isHourlyBooking 
+                              ? 'bg-green-500/20 text-green-300 border border-green-500/30' 
+                              : 'bg-red-500/20 text-red-300 border border-red-500/30'
+                          }`}>
+                            {selectedBooking.metadata.isHourlyBooking ? 'Yes' : 'No'}
+                          </span>
+                        </div>
+                        <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                          <label className="text-sm text-gray-400 mb-2 block">Wait and Return</label>
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                            selectedBooking.metadata.waitAndReturn 
+                              ? 'bg-green-500/20 text-green-300 border border-green-500/30' 
+                              : 'bg-red-500/20 text-red-300 border border-red-500/30'
+                          }`}>
+                            {selectedBooking.metadata.waitAndReturn ? 'Yes' : 'No'}
+                          </span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Timeline Information */}
+                {selectedBooking.timeline && selectedBooking.timeline.length > 0 && (
+                  <Card className="bg-gray-800/50 border-gray-700 lg:col-span-2 xl:col-span-3">
+                    <CardHeader>
+                      <CardTitle className="text-white flex items-center gap-2">
+                        <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+                          <CalendarIcon className="h-4 w-4 text-white" />
+                        </div>
+                        Booking Timeline
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      <div className="space-y-3">
+                        {selectedBooking.timeline.map((event, index) => (
+                          <div key={index} className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <p className="text-white font-semibold capitalize">{event.status.replace('_', ' ')}</p>
+                                <p className="text-gray-400 text-sm">
+                                  {new Date(event.timestamp).toLocaleString()}
+                                </p>
+                                {event.updatedBy && (
+                                  <p className="text-gray-500 text-xs mt-1">Updated by: {event.updatedBy}</p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
             </div>
           </div>

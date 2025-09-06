@@ -15,6 +15,9 @@ import {
   SeparatedBookingsResponse,
   BookingStatistics,
   CalendarEvent,
+  PaymentMethodAnalytics,
+  WaitTimerAnalytics,
+  FilterOptions,
 } from "../types/api";
 
 // Auth API Calls
@@ -186,6 +189,10 @@ export const bookingsAPI = {
       if (params?.endDate) queryParams.append('endDate', params.endDate);
       if (params?.vehicleType) queryParams.append('vehicleType', params.vehicleType);
       if (params?.bookingType) queryParams.append('bookingType', params.bookingType);
+      // NEW FILTER PARAMETERS
+      if (params?.returnType) queryParams.append('returnType', params.returnType);
+      if (params?.paymentMethod) queryParams.append('paymentMethod', params.paymentMethod);
+      if (params?.waitDuration) queryParams.append('waitDuration', params.waitDuration);
       if (params?.search) queryParams.append('search', params.search);
       if (params?.page) queryParams.append('page', params.page.toString());
       if (params?.limit) queryParams.append('limit', params.limit.toString());
@@ -529,6 +536,66 @@ export const analyticsAPI = {
       };
     }
   },
+
+  // NEW ANALYTICS ENDPOINTS
+
+  // Get payment method analytics
+  getPaymentMethodAnalytics: async (startDate?: string, endDate?: string): Promise<ApiResponse<PaymentMethodAnalytics>> => {
+    try {
+      const queryParams = new URLSearchParams();
+      if (startDate) queryParams.append('startDate', startDate);
+      if (endDate) queryParams.append('endDate', endDate);
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/analytics/payment-methods?${queryParams}`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Get payment method analytics error:", error);
+      return {
+        success: false,
+        error: {
+          message: "Failed to fetch payment method analytics",
+          code: "FETCH_PAYMENT_METHOD_ANALYTICS_FAILED",
+        },
+      };
+    }
+  },
+
+  // Get wait timer analytics
+  getWaitTimerAnalytics: async (startDate?: string, endDate?: string): Promise<ApiResponse<WaitTimerAnalytics>> => {
+    try {
+      const queryParams = new URLSearchParams();
+      if (startDate) queryParams.append('startDate', startDate);
+      if (endDate) queryParams.append('endDate', endDate);
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/analytics/wait-timers?${queryParams}`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Get wait timer analytics error:", error);
+      return {
+        success: false,
+        error: {
+          message: "Failed to fetch wait timer analytics",
+          code: "FETCH_WAIT_TIMER_ANALYTICS_FAILED",
+        },
+      };
+    }
+  },
 };
 
 // Users API
@@ -726,6 +793,33 @@ export const logsAPI = {
         error: {
           message: "Failed to fetch logs",
           code: "FETCH_LOGS_FAILED",
+        },
+      };
+    }
+  },
+};
+
+// NEW FILTER OPTIONS API
+export const filterOptionsAPI = {
+  getFilterOptions: async (): Promise<ApiResponse<FilterOptions>> => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/filters/options`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Get filter options error:", error);
+      return {
+        success: false,
+        error: {
+          message: "Failed to fetch filter options",
+          code: "FETCH_FILTER_OPTIONS_FAILED",
         },
       };
     }

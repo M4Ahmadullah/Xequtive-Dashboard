@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { RevenueAnalytics, TrafficAnalytics } from "@/types/api";
 import { FaChartLine, FaUsers, FaMinus } from "react-icons/fa";
 import { analyticsAPI } from "@/lib/api";
+import PaymentMethodAnalyticsComponent from "@/components/analytics/PaymentMethodAnalytics";
+import WaitTimerAnalyticsComponent from "@/components/analytics/WaitTimerAnalytics";
 
 export default function AnalyticsPage() {
   const [revenueData, setRevenueData] = useState<RevenueAnalytics | null>(null);
@@ -364,6 +366,28 @@ export default function AnalyticsPage() {
             <span>Social media accounts not connected. Connect your accounts to see detailed analytics.</span>
           </div>
         </div>
+      </div>
+
+      {/* NEW: Payment Method Analytics */}
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+            <FaChartLine className="h-5 w-5 text-white" />
+          </div>
+          Payment Method Analytics
+        </h2>
+        <PaymentMethodAnalyticsComponent />
+      </div>
+
+      {/* NEW: Wait Timer Analytics */}
+      <div className="mb-8">
+        <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-purple-600 rounded-xl flex items-center justify-center">
+            <FaUsers className="h-5 w-5 text-white" />
+          </div>
+          Wait Timer Analytics
+        </h2>
+        <WaitTimerAnalyticsComponent />
       </div>
 
       {/* Enhanced Performance Metrics */}
