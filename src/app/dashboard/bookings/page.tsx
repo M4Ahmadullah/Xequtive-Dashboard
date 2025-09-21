@@ -1444,7 +1444,7 @@ export default function BookingsPage() {
                   <Select
                     value={editingBooking.status}
                     onValueChange={(value) => {
-                      setEditingBooking(prev => prev ? { ...prev, status: value as any } : null);
+                      setEditingBooking(prev => prev ? { ...prev, status: value as "pending" | "confirmed" | "in-progress" | "completed" | "cancelled" | "declined" | "no_show" } : null);
                     }}
                   >
                     <SelectTrigger className="bg-gray-800 border-gray-600 text-white">
@@ -1488,7 +1488,7 @@ export default function BookingsPage() {
                       <Select
                         value={editingBooking.returnType || ''}
                         onValueChange={(value) => {
-                          setEditingBooking(prev => prev ? { ...prev, returnType: value as any } : null);
+                          setEditingBooking(prev => prev ? { ...prev, returnType: value as "wait-and-return" | "later-date" } : null);
                         }}
                       >
                         <SelectTrigger className="bg-gray-800 border-gray-600 text-white">

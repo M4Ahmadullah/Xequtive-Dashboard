@@ -49,13 +49,13 @@ export default function ContactMessagesPage() {
 
   useEffect(() => {
     fetchMessages(true); // Initial load
-  }, []);
+  }, [fetchMessages]);
 
   useEffect(() => {
     if (pagination.offset > 0) {
       fetchMessages(false); // Load more messages
     }
-  }, [pagination.offset]);
+  }, [pagination.offset, fetchMessages]);
 
   const openMessageModal = (message: ContactMessage) => {
     setSelectedMessage(message);

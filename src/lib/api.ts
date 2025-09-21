@@ -18,7 +18,6 @@ import {
   PaymentMethodAnalytics,
   WaitTimerAnalytics,
   FilterOptions,
-  ContactMessage,
   ContactMessagesResponse,
   ContactMessageUpdateRequest,
 } from "../types/api";
