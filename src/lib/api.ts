@@ -18,6 +18,9 @@ import {
   PaymentMethodAnalytics,
   WaitTimerAnalytics,
   FilterOptions,
+  ContactMessage,
+  ContactMessagesResponse,
+  ContactMessageUpdateRequest,
 } from "../types/api";
 
 // Auth API Calls
@@ -820,6 +823,76 @@ export const filterOptionsAPI = {
         error: {
           message: "Failed to fetch filter options",
           code: "FETCH_FILTER_OPTIONS_FAILED",
+        },
+      };
+    }
+  },
+};
+
+// CONTACT MESSAGES API
+export const contactMessagesAPI = {
+  // Get contact messages with filtering and pagination
+  getContactMessages: async (params?: {
+    status?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<ApiResponse<ContactMessagesResponse>> => {
+    try {
+      const queryParams = new URLSearchParams();
+      if (params?.status) queryParams.append('status', params.status);
+      if (params?.limit) queryParams.append('limit', params.limit.toString());
+      if (params?.offset) queryParams.append('offset', params.offset.toString());
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/contact-messages?${queryParams}`, {
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Get contact messages error:", error);
+      return {
+        success: false,
+        error: {
+          message: "Failed to fetch contact messages",
+          code: "FETCH_CONTACT_MESSAGES_FAILED",
+        },
+      };
+    }
+  },
+
+  // Update contact message status
+  updateContactMessage: async (
+    messageId: string,
+    updateData: ContactMessageUpdateRequest
+  ): Promise<ApiResponse<{ id: string; message: string; updatedFields: string[] }>> => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/dashboard/contact-messages/${messageId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(updateData),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data;
+    } catch (error) {
+      console.error("Update contact message error:", error);
+      return {
+        success: false,
+        error: {
+          message: "Failed to update contact message",
+          code: "UPDATE_CONTACT_MESSAGE_FAILED",
         },
       };
     }

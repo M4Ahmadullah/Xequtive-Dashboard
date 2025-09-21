@@ -4,23 +4,20 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { WaitTimerAnalytics } from "@/types/api";
 import { analyticsAPI } from "@/lib/api";
-import { FaClock, FaCalendarAlt, FaChartBar, FaStopwatch } from "react-icons/fa";
 
-interface WaitTimerAnalyticsProps {
-  startDate?: string;
-  endDate?: string;
-}
-
-export default function WaitTimerAnalyticsComponent({ startDate, endDate }: WaitTimerAnalyticsProps) {
+export default function WaitTimerAnalyticsComponent() {
   const [data, setData] = useState<WaitTimerAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchData = async () => {
+    async function fetchWaitTimerAnalytics() {
       setLoading(true);
+      setError(null);
+
       try {
-        const response = await analyticsAPI.getWaitTimerAnalytics(startDate, endDate);
+        const response = await analyticsAPI.getWaitTimerAnalytics();
+        
         if (response.success && response.data) {
           setData(response.data);
         } else {
@@ -28,253 +25,184 @@ export default function WaitTimerAnalyticsComponent({ startDate, endDate }: Wait
         }
       } catch (error) {
         console.error('Error fetching wait timer analytics:', error);
-        setError('Failed to fetch wait timer analytics');
+        setError('Failed to load wait timer analytics');
       } finally {
         setLoading(false);
       }
-    };
+    }
 
-    fetchData();
-  }, [startDate, endDate]);
+    fetchWaitTimerAnalytics();
+  }, []);
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="w-8 h-8 border-4 border-gray-800 border-t-purple-600 rounded-full animate-spin"></div>
-      </div>
+      <Card className="bg-gray-800/50 border-gray-700">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center gap-2">
+            <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
+              <svg className="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+              </svg>
+            </div>
+            Wait Timer Analytics
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-center items-center h-32">
+            <div className="w-8 h-8 border-2 border-gray-600 border-t-purple-500 rounded-full animate-spin"></div>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   if (error) {
     return (
-      <div className="text-center py-8">
-        <div className="w-16 h-16 bg-red-600/10 rounded-full flex items-center justify-center mx-auto mb-4">
-          <FaChartBar className="h-8 w-8 text-red-500" />
-        </div>
-        <h3 className="text-lg font-semibold text-white mb-2">Error Loading Analytics</h3>
-        <p className="text-gray-400">{error}</p>
-      </div>
+      <Card className="bg-gray-800/50 border-gray-700">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center gap-2">
+            <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
+              <svg className="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+              </svg>
+            </div>
+            Wait Timer Analytics
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center text-red-400">
+            <p>{error}</p>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
-  if (!data) return null;
+  if (!data) {
+    return null;
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="bg-gradient-to-br from-purple-900/20 to-purple-800/10 border border-purple-700/30 backdrop-blur-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-purple-300 text-lg font-semibold flex items-center gap-2">
-              <div className="w-8 h-8 bg-purple-600/20 rounded-lg flex items-center justify-center">
-                <FaChartBar className="h-4 w-4 text-purple-400" />
-              </div>
-              Total Return Bookings
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-purple-100 mb-2">
-              {data.totalReturnBookings.toLocaleString()}
-            </div>
-            <div className="text-sm text-purple-300">
-              {data.percentages.waitAndReturn}% wait-and-return
-            </div>
-          </CardContent>
-        </Card>
+    <Card className="bg-gray-800/50 border-gray-700">
+      <CardHeader>
+        <CardTitle className="text-white flex items-center gap-2">
+          <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
+            <svg className="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+            </svg>
+          </div>
+          Wait Timer Analytics
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Overview Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+            <label className="text-sm text-gray-400 mb-2 block">Total Return Bookings</label>
+            <p className="text-white font-bold text-2xl">{data.totalReturnBookings}</p>
+          </div>
+          <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+            <label className="text-sm text-gray-400 mb-2 block">Wait & Return</label>
+            <p className="text-white font-bold text-2xl">{data.waitAndReturnBookings}</p>
+            <p className="text-purple-400 text-sm">{data.percentages.waitAndReturn}%</p>
+          </div>
+          <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+            <label className="text-sm text-gray-400 mb-2 block">Later Date</label>
+            <p className="text-white font-bold text-2xl">{data.laterDateBookings}</p>
+            <p className="text-blue-400 text-sm">{data.percentages.laterDate}%</p>
+          </div>
+          <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+            <label className="text-sm text-gray-400 mb-2 block">Avg Wait Duration</label>
+            <p className="text-white font-bold text-2xl">{data.averageWaitDuration}h</p>
+          </div>
+        </div>
 
-        <Card className="bg-gradient-to-br from-blue-900/20 to-blue-800/10 border border-blue-700/30 backdrop-blur-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-blue-300 text-lg font-semibold flex items-center gap-2">
-              <div className="w-8 h-8 bg-blue-600/20 rounded-lg flex items-center justify-center">
-                <FaClock className="h-4 w-4 text-blue-400" />
-              </div>
-              Wait & Return
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-blue-100 mb-2">
-              {data.waitAndReturnBookings.toLocaleString()}
-            </div>
-            <div className="text-sm text-blue-300">
-              {data.percentages.waitAndReturn}% of returns
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-green-900/20 to-green-800/10 border border-green-700/30 backdrop-blur-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-green-300 text-lg font-semibold flex items-center gap-2">
-              <div className="w-8 h-8 bg-green-600/20 rounded-lg flex items-center justify-center">
-                <FaCalendarAlt className="h-4 w-4 text-green-400" />
-              </div>
-              Later Date
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-green-100 mb-2">
-              {data.laterDateBookings.toLocaleString()}
-            </div>
-            <div className="text-sm text-green-300">
-              {data.percentages.laterDate}% of returns
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-orange-900/20 to-orange-800/10 border border-orange-700/30 backdrop-blur-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-orange-300 text-lg font-semibold flex items-center gap-2">
-              <div className="w-8 h-8 bg-orange-600/20 rounded-lg flex items-center justify-center">
-                <FaStopwatch className="h-4 w-4 text-orange-400" />
-              </div>
-              With Timer
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-orange-100 mb-2">
-              {data.withWaitDuration.toLocaleString()}
-            </div>
-            <div className="text-sm text-orange-300">
-              {data.percentages.withTimer}% specified duration
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Wait Duration Distribution */}
-      <Card className="bg-gradient-to-br from-cyan-900/20 to-cyan-800/10 border border-cyan-700/30 backdrop-blur-sm">
-        <CardHeader>
-          <CardTitle className="text-cyan-300 text-xl font-semibold flex items-center gap-2">
-            <div className="w-8 h-8 bg-cyan-600/20 rounded-lg flex items-center justify-center">
-              <FaClock className="h-5 w-5 text-cyan-400" />
-            </div>
-            Wait Duration Distribution
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        {/* Wait Duration Distribution */}
+        <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+          <h3 className="text-white font-semibold mb-4">Wait Duration Distribution</h3>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {Object.entries(data.waitDurationDistribution).map(([range, count]) => (
-              <div key={range} className="bg-cyan-800/20 p-4 rounded-xl border border-cyan-700/50 text-center">
-                <div className="text-2xl font-bold text-cyan-300 mb-1">{count}</div>
-                <p className="text-cyan-400 text-sm">{range} hours</p>
+              <div key={range} className="text-center">
+                <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-2">
+                  <span className="text-purple-400 font-bold text-lg">{range}</span>
+                </div>
+                <p className="text-white font-semibold">{count}</p>
+                <p className="text-gray-400 text-sm">bookings</p>
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Average Wait Duration */}
-      <Card className="bg-gradient-to-br from-indigo-900/20 to-indigo-800/10 border border-indigo-700/30 backdrop-blur-sm">
-        <CardHeader>
-          <CardTitle className="text-indigo-300 text-xl font-semibold flex items-center gap-2">
-            <div className="w-8 h-8 bg-indigo-600/20 rounded-lg flex items-center justify-center">
-              <FaStopwatch className="h-5 w-5 text-indigo-400" />
-            </div>
-            Wait Duration Statistics
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="bg-indigo-800/20 p-6 rounded-xl border border-indigo-700/50 text-center">
-              <div className="text-3xl font-bold text-indigo-300 mb-2">
-                {data.averageWaitDuration.toFixed(1)} hours
-              </div>
-              <p className="text-indigo-400 text-sm">Average Wait Duration</p>
-            </div>
-            <div className="bg-indigo-800/20 p-6 rounded-xl border border-indigo-700/50 text-center">
-              <div className="text-3xl font-bold text-indigo-300 mb-2">
-                {data.totalWaitDuration.toFixed(1)} hours
-              </div>
-              <p className="text-indigo-400 text-sm">Total Wait Time</p>
-            </div>
-            <div className="bg-indigo-800/20 p-6 rounded-xl border border-indigo-700/50 text-center">
-              <div className="text-3xl font-bold text-indigo-300 mb-2">
-                {data.byBookingType.waitAndReturn.averageDuration.toFixed(1)} hours
-              </div>
-              <p className="text-indigo-400 text-sm">Wait & Return Average</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Wait & Return Breakdown */}
-      <Card className="bg-gradient-to-br from-emerald-900/20 to-emerald-800/10 border border-emerald-700/30 backdrop-blur-sm">
-        <CardHeader>
-          <CardTitle className="text-emerald-300 text-xl font-semibold flex items-center gap-2">
-            <div className="w-8 h-8 bg-emerald-600/20 rounded-lg flex items-center justify-center">
-              <FaChartBar className="h-5 w-5 text-emerald-400" />
-            </div>
-            Wait & Return Breakdown
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="bg-emerald-800/20 p-6 rounded-xl border border-emerald-700/50">
-              <h4 className="text-emerald-300 font-semibold mb-4">With Specified Timer</h4>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-emerald-400">Bookings with timer</span>
-                  <span className="text-emerald-300 font-semibold">{data.byBookingType.waitAndReturn.withTimer}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-emerald-400">Average duration</span>
-                  <span className="text-emerald-300 font-semibold">{data.byBookingType.waitAndReturn.averageDuration.toFixed(1)} hours</span>
-                </div>
-                <div className="w-full bg-gray-700/50 rounded-full h-2 overflow-hidden">
-                  <div 
-                    className="bg-gradient-to-r from-emerald-500 to-emerald-600 h-2 rounded-full transition-all duration-1000 ease-out" 
-                    style={{ width: `${(data.byBookingType.waitAndReturn.withTimer / data.waitAndReturnBookings) * 100}%` }}
-                  ></div>
-                </div>
-                <p className="text-emerald-400 text-xs text-center">
-                  {((data.byBookingType.waitAndReturn.withTimer / data.waitAndReturnBookings) * 100).toFixed(1)}% of wait & return bookings
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-emerald-800/20 p-6 rounded-xl border border-emerald-700/50">
-              <h4 className="text-emerald-300 font-semibold mb-4">Without Specified Timer</h4>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-emerald-400">Bookings without timer</span>
-                  <span className="text-emerald-300 font-semibold">{data.byBookingType.waitAndReturn.withoutTimer}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-emerald-400">Default duration</span>
-                  <span className="text-emerald-300 font-semibold">Up to 12 hours</span>
-                </div>
-                <div className="w-full bg-gray-700/50 rounded-full h-2 overflow-hidden">
-                  <div 
-                    className="bg-gradient-to-r from-emerald-500 to-emerald-600 h-2 rounded-full transition-all duration-1000 ease-out" 
-                    style={{ width: `${(data.byBookingType.waitAndReturn.withoutTimer / data.waitAndReturnBookings) * 100}%` }}
-                  ></div>
-                </div>
-                <p className="text-emerald-400 text-xs text-center">
-                  {((data.byBookingType.waitAndReturn.withoutTimer / data.waitAndReturnBookings) * 100).toFixed(1)}% of wait & return bookings
-                </p>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Wait Timer Definitions */}
-      <Card className="bg-gradient-to-br from-gray-900/20 to-gray-800/10 border border-gray-700/30 backdrop-blur-sm">
-        <CardHeader>
-          <CardTitle className="text-gray-300 text-lg font-semibold">Wait Timer Definitions</CardTitle>
-        </CardHeader>
-        <CardContent>
+        {/* Wait Timer Usage */}
+        <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+          <h3 className="text-white font-semibold mb-4">Wait Timer Usage</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {Object.entries(data.waitTimerDefinitions).map(([key, definition]) => (
-              <div key={key} className="bg-gray-800/20 p-4 rounded-xl border border-gray-700/50">
-                <h4 className="text-gray-300 font-semibold mb-2 capitalize">
-                  {key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}
-                </h4>
-                <p className="text-gray-400 text-sm">{definition}</p>
+            <div className="text-center">
+              <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-2">
+                <span className="text-green-400 font-bold text-lg">✓</span>
               </div>
-            ))}
+              <p className="text-white font-semibold text-xl">{data.withWaitDuration}</p>
+              <p className="text-gray-400 text-sm">With Timer</p>
+              <p className="text-green-400 text-xs">{data.percentages.withTimer}%</p>
+            </div>
+            <div className="text-center">
+              <div className="w-16 h-16 bg-orange-500/20 rounded-full flex items-center justify-center mx-auto mb-2">
+                <span className="text-orange-400 font-bold text-lg">?</span>
+              </div>
+              <p className="text-white font-semibold text-xl">{data.withoutWaitDuration}</p>
+              <p className="text-gray-400 text-sm">Without Timer</p>
+              <p className="text-orange-400 text-xs">{data.percentages.withoutTimer}%</p>
+            </div>
           </div>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+
+        {/* Wait Duration Stats */}
+        <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+          <h3 className="text-white font-semibold mb-4">Wait Duration Statistics</h3>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-400">Average Wait Duration</span>
+              <span className="text-purple-400 font-semibold">{data.averageWaitDuration} hours</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-400">Total Wait Duration</span>
+              <span className="text-purple-400 font-semibold">{data.totalWaitDuration} hours</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-400">Wait & Return Bookings</span>
+              <span className="text-purple-400 font-semibold">{data.waitAndReturnBookings}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-400">Later Date Bookings</span>
+              <span className="text-blue-400 font-semibold">{data.laterDateBookings}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Booking Type Breakdown */}
+        <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+          <h3 className="text-white font-semibold mb-4">Wait Timer Usage by Booking Type</h3>
+          <div className="space-y-4">
+            <div className="border-b border-gray-600/50 pb-3">
+              <h4 className="text-gray-300 font-medium mb-2">Wait & Return Bookings</h4>
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div className="text-center">
+                  <p className="text-green-400 font-semibold">{data.byBookingType.waitAndReturn.withTimer}</p>
+                  <p className="text-gray-500 text-xs">With Timer</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-orange-400 font-semibold">{data.byBookingType.waitAndReturn.withoutTimer}</p>
+                  <p className="text-gray-500 text-xs">Without Timer</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-purple-400 font-semibold">{data.byBookingType.waitAndReturn.averageDuration}h</p>
+                  <p className="text-gray-500 text-xs">Avg Duration</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

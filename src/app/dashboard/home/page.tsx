@@ -11,6 +11,7 @@ import {
   FaChartLine,
   FaDollarSign,
   FaArrowRight,
+  FaEnvelope,
 } from "react-icons/fa";
 import { analyticsAPI, bookingsAPI } from "@/lib/api";
 
@@ -250,6 +251,29 @@ export default function DashboardHomePage() {
                             <FaCalendarCheck className="h-3 w-3" />
                             {booking.bookingType || 'Booking Type'}
                           </span>
+                          {/* NEW: Payment Methods */}
+                          {booking.paymentMethods && (
+                            <span className="flex items-center gap-1">
+                              <span className="text-xs">💳</span>
+                              {booking.paymentMethods.cashOnArrival && booking.paymentMethods.cardOnArrival ? 'Cash/Card' :
+                               booking.paymentMethods.cashOnArrival ? 'Cash' :
+                               booking.paymentMethods.cardOnArrival ? 'Card' : 'Not Specified'}
+                            </span>
+                          )}
+                          {/* NEW: Wait Duration for Return Bookings */}
+                          {booking.bookingType === 'return' && booking.returnType === 'wait-and-return' && (
+                            <span className="flex items-center gap-1">
+                              <span className="text-xs">⏱️</span>
+                              {booking.waitDuration ? `${booking.waitDuration}h` : 'Up to 12h'}
+                            </span>
+                          )}
+                          {/* NEW: Hours for Hourly Bookings */}
+                          {booking.bookingType === 'hourly' && booking.hours && (
+                            <span className="flex items-center gap-1">
+                              <span className="text-xs">🕐</span>
+                              {booking.hours}h
+                            </span>
+                          )}
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-2">
@@ -313,6 +337,18 @@ export default function DashboardHomePage() {
                   <div>
                     <h4 className="font-semibold text-gray-900 group-hover:text-blue-900 transition-colors duration-200">User Management</h4>
                     <p className="text-sm text-gray-600">Manage user accounts</p>
+                  </div>
+                </div>
+              </Link>
+
+              <Link href="/dashboard/contact-messages" className="group p-4 rounded-xl border border-gray-100 hover:border-green-200 hover:bg-green-50/50 transition-all duration-300 transform hover:scale-[1.02]">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-green-600 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
+                    <FaEnvelope className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-gray-900 group-hover:text-green-900 transition-colors duration-200">Contact Messages</h4>
+                    <p className="text-sm text-gray-600">Manage customer inquiries</p>
                   </div>
                 </div>
               </Link>

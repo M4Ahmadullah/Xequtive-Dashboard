@@ -4,23 +4,20 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PaymentMethodAnalytics } from "@/types/api";
 import { analyticsAPI } from "@/lib/api";
-import { FaCreditCard, FaMoneyBillWave, FaChartPie, FaDollarSign } from "react-icons/fa";
 
-interface PaymentMethodAnalyticsProps {
-  startDate?: string;
-  endDate?: string;
-}
-
-export default function PaymentMethodAnalyticsComponent({ startDate, endDate }: PaymentMethodAnalyticsProps) {
+export default function PaymentMethodAnalyticsComponent() {
   const [data, setData] = useState<PaymentMethodAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchData = async () => {
+    async function fetchPaymentMethodAnalytics() {
       setLoading(true);
+      setError(null);
+
       try {
-        const response = await analyticsAPI.getPaymentMethodAnalytics(startDate, endDate);
+        const response = await analyticsAPI.getPaymentMethodAnalytics();
+        
         if (response.success && response.data) {
           setData(response.data);
         } else {
@@ -28,232 +25,178 @@ export default function PaymentMethodAnalyticsComponent({ startDate, endDate }: 
         }
       } catch (error) {
         console.error('Error fetching payment method analytics:', error);
-        setError('Failed to fetch payment method analytics');
+        setError('Failed to load payment method analytics');
       } finally {
         setLoading(false);
       }
-    };
+    }
 
-    fetchData();
-  }, [startDate, endDate]);
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-GB', {
-      style: 'currency',
-      currency: 'GBP',
-    }).format(amount);
-  };
+    fetchPaymentMethodAnalytics();
+  }, []);
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <div className="w-8 h-8 border-4 border-gray-800 border-t-blue-600 rounded-full animate-spin"></div>
-      </div>
+      <Card className="bg-gray-800/50 border-gray-700">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center gap-2">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <svg className="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4zM18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" />
+              </svg>
+            </div>
+            Payment Method Analytics
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="flex justify-center items-center h-32">
+            <div className="w-8 h-8 border-2 border-gray-600 border-t-blue-500 rounded-full animate-spin"></div>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   if (error) {
     return (
-      <div className="text-center py-8">
-        <div className="w-16 h-16 bg-red-600/10 rounded-full flex items-center justify-center mx-auto mb-4">
-          <FaChartPie className="h-8 w-8 text-red-500" />
-        </div>
-        <h3 className="text-lg font-semibold text-white mb-2">Error Loading Analytics</h3>
-        <p className="text-gray-400">{error}</p>
-      </div>
+      <Card className="bg-gray-800/50 border-gray-700">
+        <CardHeader>
+          <CardTitle className="text-white flex items-center gap-2">
+            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+              <svg className="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4zM18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" />
+              </svg>
+            </div>
+            Payment Method Analytics
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="text-center text-red-400">
+            <p>{error}</p>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
-  if (!data) return null;
+  if (!data) {
+    return null;
+  }
 
   return (
-    <div className="space-y-6">
-      {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="bg-gradient-to-br from-blue-900/20 to-blue-800/10 border border-blue-700/30 backdrop-blur-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-blue-300 text-lg font-semibold flex items-center gap-2">
-              <div className="w-8 h-8 bg-blue-600/20 rounded-lg flex items-center justify-center">
-                <FaChartPie className="h-4 w-4 text-blue-400" />
-              </div>
-              Total Bookings
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-blue-100 mb-2">
-              {data.total.toLocaleString()}
-            </div>
-            <div className="text-sm text-blue-300">
-              {data.percentages.withPaymentMethods}% with payment methods
-            </div>
-          </CardContent>
-        </Card>
+    <Card className="bg-gray-800/50 border-gray-700">
+      <CardHeader>
+        <CardTitle className="text-white flex items-center gap-2">
+          <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center">
+            <svg className="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4zM18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" />
+            </svg>
+          </div>
+          Payment Method Analytics
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Overview Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+            <label className="text-sm text-gray-400 mb-2 block">Total Bookings</label>
+            <p className="text-white font-bold text-2xl">{data.total}</p>
+          </div>
+          <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+            <label className="text-sm text-gray-400 mb-2 block">With Payment Methods</label>
+            <p className="text-white font-bold text-2xl">{data.withPaymentMethods}</p>
+            <p className="text-green-400 text-sm">{data.percentages.withPaymentMethods}%</p>
+          </div>
+          <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+            <label className="text-sm text-gray-400 mb-2 block">Without Payment Methods</label>
+            <p className="text-white font-bold text-2xl">{data.withoutPaymentMethods}</p>
+            <p className="text-red-400 text-sm">{data.percentages.withoutPaymentMethods}%</p>
+          </div>
+        </div>
 
-        <Card className="bg-gradient-to-br from-green-900/20 to-green-800/10 border border-green-700/30 backdrop-blur-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-green-300 text-lg font-semibold flex items-center gap-2">
-              <div className="w-8 h-8 bg-green-600/20 rounded-lg flex items-center justify-center">
-                <FaMoneyBillWave className="h-4 w-4 text-green-400" />
+        {/* Payment Method Distribution */}
+        <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+          <h3 className="text-white font-semibold mb-4">Payment Method Distribution</h3>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="text-center">
+              <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-2">
+                <span className="text-green-400 font-bold text-lg">£</span>
               </div>
-              Cash on Arrival
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-green-100 mb-2">
-              {data.byMethod.cashOnArrival}
+              <p className="text-white font-semibold">{data.byMethod.cashOnArrival}</p>
+              <p className="text-gray-400 text-sm">Cash on Arrival</p>
+              <p className="text-green-400 text-xs">{data.percentages.byMethod.cashOnArrival}%</p>
             </div>
-            <div className="text-sm text-green-300">
-              {data.percentages.byMethod.cashOnArrival}% of bookings
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-purple-900/20 to-purple-800/10 border border-purple-700/30 backdrop-blur-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-purple-300 text-lg font-semibold flex items-center gap-2">
-              <div className="w-8 h-8 bg-purple-600/20 rounded-lg flex items-center justify-center">
-                <FaCreditCard className="h-4 w-4 text-purple-400" />
+            <div className="text-center">
+              <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-2">
+                <span className="text-blue-400 font-bold text-lg">💳</span>
               </div>
-              Card on Arrival
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-purple-100 mb-2">
-              {data.byMethod.cardOnArrival}
+              <p className="text-white font-semibold">{data.byMethod.cardOnArrival}</p>
+              <p className="text-gray-400 text-sm">Card on Arrival</p>
+              <p className="text-blue-400 text-xs">{data.percentages.byMethod.cardOnArrival}%</p>
             </div>
-            <div className="text-sm text-purple-300">
-              {data.percentages.byMethod.cardOnArrival}% of bookings
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-orange-900/20 to-orange-800/10 border border-orange-700/30 backdrop-blur-sm">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-orange-300 text-lg font-semibold flex items-center gap-2">
-              <div className="w-8 h-8 bg-orange-600/20 rounded-lg flex items-center justify-center">
-                <FaDollarSign className="h-4 w-4 text-orange-400" />
+            <div className="text-center">
+              <div className="w-16 h-16 bg-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-2">
+                <span className="text-purple-400 font-bold text-lg">💰</span>
               </div>
-              Both Methods
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold text-orange-100 mb-2">
-              {data.byMethod.both}
-            </div>
-            <div className="text-sm text-orange-300">
-              {data.percentages.byMethod.both}% of bookings
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Revenue by Payment Method */}
-      <Card className="bg-gradient-to-br from-emerald-900/20 to-emerald-800/10 border border-emerald-700/30 backdrop-blur-sm">
-        <CardHeader>
-          <CardTitle className="text-emerald-300 text-xl font-semibold flex items-center gap-2">
-            <div className="w-8 h-8 bg-emerald-600/20 rounded-lg flex items-center justify-center">
-              <FaDollarSign className="h-5 w-5 text-emerald-400" />
-            </div>
-            Revenue by Payment Method
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="bg-emerald-800/20 p-4 rounded-xl border border-emerald-700/50">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-emerald-300 mb-1">
-                  {formatCurrency(data.revenue.cashOnArrival)}
-                </div>
-                <p className="text-emerald-400 text-sm">Cash on Arrival</p>
-              </div>
-            </div>
-            <div className="bg-emerald-800/20 p-4 rounded-xl border border-emerald-700/50">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-emerald-300 mb-1">
-                  {formatCurrency(data.revenue.cardOnArrival)}
-                </div>
-                <p className="text-emerald-400 text-sm">Card on Arrival</p>
-              </div>
-            </div>
-            <div className="bg-emerald-800/20 p-4 rounded-xl border border-emerald-700/50">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-emerald-300 mb-1">
-                  {formatCurrency(data.revenue.both)}
-                </div>
-                <p className="text-emerald-400 text-sm">Both Methods</p>
-              </div>
-            </div>
-            <div className="bg-emerald-800/20 p-4 rounded-xl border border-emerald-700/50">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-emerald-300 mb-1">
-                  {formatCurrency(data.revenue.none)}
-                </div>
-                <p className="text-emerald-400 text-sm">Not Specified</p>
-              </div>
+              <p className="text-white font-semibold">{data.byMethod.both}</p>
+              <p className="text-gray-400 text-sm">Both Methods</p>
+              <p className="text-purple-400 text-xs">{data.percentages.byMethod.both}%</p>
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      {/* Payment Method Distribution by Booking Type */}
-      <Card className="bg-gradient-to-br from-indigo-900/20 to-indigo-800/10 border border-indigo-700/30 backdrop-blur-sm">
-        <CardHeader>
-          <CardTitle className="text-indigo-300 text-xl font-semibold flex items-center gap-2">
-            <div className="w-8 h-8 bg-indigo-600/20 rounded-lg flex items-center justify-center">
-              <FaChartPie className="h-5 w-5 text-indigo-400" />
+        {/* Revenue by Payment Method */}
+        <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+          <h3 className="text-white font-semibold mb-4">Revenue by Payment Method</h3>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-400">Cash on Arrival</span>
+              <span className="text-green-400 font-semibold">£{data.revenue.cashOnArrival.toLocaleString()}</span>
             </div>
-            Payment Method Distribution by Booking Type
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-6">
-            {Object.entries(data.byBookingType).map(([bookingType, stats]) => (
-              <div key={bookingType} className="bg-indigo-800/20 p-4 rounded-xl border border-indigo-700/50">
-                <h4 className="text-indigo-300 font-semibold mb-3 capitalize">
-                  {bookingType.replace('-', ' ')} Bookings
-                </h4>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="flex justify-between items-center">
+              <span className="text-gray-400">Card on Arrival</span>
+              <span className="text-blue-400 font-semibold">£{data.revenue.cardOnArrival.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-400">Both Methods</span>
+              <span className="text-purple-400 font-semibold">£{data.revenue.both.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-gray-400">Not Specified</span>
+              <span className="text-gray-400 font-semibold">£{data.revenue.none.toLocaleString()}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Booking Type Breakdown */}
+        <div className="bg-gray-700/30 p-4 rounded-xl border border-gray-600/50">
+          <h3 className="text-white font-semibold mb-4">Payment Methods by Booking Type</h3>
+          <div className="space-y-4">
+            {Object.entries(data.byBookingType).map(([type, stats]) => (
+              <div key={type} className="border-b border-gray-600/50 pb-3 last:border-b-0">
+                <h4 className="text-gray-300 font-medium capitalize mb-2">{type.replace('-', ' ')}</h4>
+                <div className="grid grid-cols-4 gap-2 text-sm">
                   <div className="text-center">
-                    <div className="text-lg font-bold text-indigo-200 mb-1">{stats.cash}</div>
-                    <p className="text-indigo-400 text-xs">Cash</p>
+                    <p className="text-green-400 font-semibold">{stats.cash}</p>
+                    <p className="text-gray-500 text-xs">Cash</p>
                   </div>
                   <div className="text-center">
-                    <div className="text-lg font-bold text-indigo-200 mb-1">{stats.card}</div>
-                    <p className="text-indigo-400 text-xs">Card</p>
+                    <p className="text-blue-400 font-semibold">{stats.card}</p>
+                    <p className="text-gray-500 text-xs">Card</p>
                   </div>
                   <div className="text-center">
-                    <div className="text-lg font-bold text-indigo-200 mb-1">{stats.both}</div>
-                    <p className="text-indigo-400 text-xs">Both</p>
+                    <p className="text-purple-400 font-semibold">{stats.both}</p>
+                    <p className="text-gray-500 text-xs">Both</p>
                   </div>
                   <div className="text-center">
-                    <div className="text-lg font-bold text-indigo-200 mb-1">{stats.none}</div>
-                    <p className="text-indigo-400 text-xs">None</p>
+                    <p className="text-gray-400 font-semibold">{stats.none}</p>
+                    <p className="text-gray-500 text-xs">None</p>
                   </div>
                 </div>
               </div>
             ))}
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Payment Method Definitions */}
-      <Card className="bg-gradient-to-br from-gray-900/20 to-gray-800/10 border border-gray-700/30 backdrop-blur-sm">
-        <CardHeader>
-          <CardTitle className="text-gray-300 text-lg font-semibold">Payment Method Definitions</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {Object.entries(data.paymentMethodDefinitions).map(([key, definition]) => (
-              <div key={key} className="bg-gray-800/20 p-4 rounded-xl border border-gray-700/50">
-                <h4 className="text-gray-300 font-semibold mb-2 capitalize">
-                  {key.charAt(0).toUpperCase() + key.slice(1).replace(/([A-Z])/g, ' $1')}
-                </h4>
-                <p className="text-gray-400 text-sm">{definition}</p>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

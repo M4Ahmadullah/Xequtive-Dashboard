@@ -151,7 +151,7 @@ export default function UsersPage() {
         <div className="flex gap-3">
           <Button
             onClick={() => setActiveFilter("all")}
-            className={`px-6 py-4 rounded-2xl transition-all duration-300 transform hover:scale-105 ${
+            className={`px-6 py-4 rounded-2xl transition-all duration-300 ${
               activeFilter === "all"
                 ? "bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg"
                 : "bg-gray-800/50 text-gray-300 hover:bg-gray-700/50 border border-gray-600"
@@ -161,7 +161,7 @@ export default function UsersPage() {
           </Button>
           <Button
             onClick={() => setActiveFilter("admin")}
-            className={`px-6 py-4 rounded-2xl transition-all duration-300 transform hover:scale-105 ${
+            className={`px-6 py-4 rounded-2xl transition-all duration-300 ${
               activeFilter === "admin"
                 ? "bg-gradient-to-r from-purple-600 to-purple-700 text-white shadow-lg"
                 : "bg-gray-800/50 text-gray-300 hover:bg-gray-700/50 border border-gray-600"
@@ -171,7 +171,7 @@ export default function UsersPage() {
           </Button>
           <Button
             onClick={() => setActiveFilter("user")}
-            className={`px-6 py-4 rounded-2xl transition-all duration-300 transform hover:scale-105 ${
+            className={`px-6 py-4 rounded-2xl transition-all duration-300 ${
               activeFilter === "user"
                 ? "bg-gradient-to-r from-blue-600 to-blue-700 text-white shadow-lg"
                 : "bg-gray-800/50 text-gray-300 hover:bg-gray-700/50 border border-gray-600"
@@ -185,7 +185,7 @@ export default function UsersPage() {
       {/* Enhanced Users Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         {filteredUsers.map((user) => (
-          <Card key={user.uid} className="group bg-gradient-to-br from-gray-900/80 to-gray-800/60 border border-gray-700 hover:border-purple-500/50 hover:shadow-2xl transition-all duration-700 transform hover:-translate-y-2 hover:scale-105 overflow-hidden">
+          <Card key={user.uid} className="group bg-gradient-to-br from-gray-900/80 to-gray-800/60 border border-gray-700 hover:border-purple-500/50 hover:shadow-2xl transition-all duration-700 transform hover:-translate-y-2 overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-blue-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
             <CardHeader className="bg-gradient-to-r from-purple-900/50 to-purple-800/30 border-b border-purple-700/50 relative">
               <div className="flex justify-between items-start">
@@ -198,60 +198,64 @@ export default function UsersPage() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="pt-6 relative">
-              <div className="space-y-4">
-                <div className="bg-gray-800/30 p-4 rounded-xl border border-gray-700/50 hover:border-purple-500/50 transition-all duration-300">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
-                      <FaEnvelope className="h-4 w-4 text-white" />
-                    </div>
-                    <p className="text-xs text-purple-400 font-semibold uppercase tracking-wide">Email</p>
+            <CardContent className="p-4 relative">
+              <div className="space-y-3">
+                {/* Email */}
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-blue-600 rounded-lg flex items-center justify-center">
+                    <FaEnvelope className="h-3 w-3 text-white" />
                   </div>
-                  <p className="font-semibold text-white text-sm break-all">{user.email}</p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-gray-400 mb-1">Email</p>
+                    <p className="font-semibold text-white text-sm truncate">{user.email}</p>
+                  </div>
                 </div>
 
+                {/* Phone */}
                 {user.phone && (
-                  <div className="bg-gray-800/30 p-4 rounded-xl border border-gray-700/50 hover:border-blue-500/50 transition-all duration-300">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-8 h-8 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center">
-                        <FaPhone className="h-4 w-4 text-white" />
-                      </div>
-                      <p className="text-xs text-blue-400 font-semibold uppercase tracking-wide">Phone</p>
+                  <div className="flex items-center gap-3">
+                    <div className="w-6 h-6 bg-gradient-to-br from-green-500 to-green-600 rounded-lg flex items-center justify-center">
+                      <FaPhone className="h-3 w-3 text-white" />
                     </div>
-                    <p className="font-semibold text-white text-sm">{user.phone}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-gray-400 mb-1">Phone</p>
+                      <p className="font-semibold text-white text-sm">{user.phone}</p>
+                    </div>
                   </div>
                 )}
 
-                <div className="bg-gray-800/30 p-4 rounded-xl border border-gray-700/50 hover:border-emerald-500/50 transition-all duration-300">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center">
-                      <FaCalendarAlt className="h-4 w-4 text-white" />
-                    </div>
-                    <p className="text-xs text-emerald-400 font-semibold uppercase tracking-wide">Member Since</p>
+                {/* Member Since */}
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg flex items-center justify-center">
+                    <FaCalendarAlt className="h-3 w-3 text-white" />
                   </div>
-                  <p className="font-semibold text-white text-sm">
-                    {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
-                  </p>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-gray-400 mb-1">Member Since</p>
+                    <p className="font-semibold text-white text-sm">
+                      {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/A'}
+                    </p>
+                  </div>
                 </div>
 
-                <div className="bg-gray-800/30 p-4 rounded-xl border border-gray-700/50 hover:border-orange-500/50 transition-all duration-300">
-                  <div className="flex items-center gap-3 mb-2">
-                    <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
-                      <FaUserAlt className="h-4 w-4 text-white" />
-                    </div>
-                    <p className="text-xs text-orange-400 font-semibold uppercase tracking-wide">Account Status</p>
+                {/* Account Status */}
+                <div className="flex items-center gap-3">
+                  <div className="w-6 h-6 bg-gradient-to-br from-orange-500 to-orange-600 rounded-lg flex items-center justify-center">
+                    <FaUserAlt className="h-3 w-3 text-white" />
                   </div>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="text-white text-sm font-medium">Active</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-gray-400 mb-1">Status</p>
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                      <span className="text-white text-sm font-medium">Active</span>
+                    </div>
                   </div>
                 </div>
               </div>
 
-              <div className="flex justify-end mt-6">
+              <div className="flex justify-end mt-4">
                 <button
                   onClick={() => openUserModal(user)}
-                  className="px-8 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-xl hover:from-purple-700 hover:to-purple-800 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-gray-900 transition-all duration-300 transform hover:scale-105 font-medium shadow-lg hover:shadow-xl"
+                  className="px-6 py-2 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg hover:from-purple-700 hover:to-purple-800 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 focus:ring-offset-gray-900 transition-all duration-300 font-medium text-sm shadow-lg hover:shadow-xl"
                 >
                   View Details
                 </button>

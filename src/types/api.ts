@@ -710,3 +710,34 @@ export interface FilterOptions {
     waitDurationRanges: Record<string, string>;
   };
 }
+
+// Contact Message Types
+export interface ContactMessage {
+  id: string;
+  userId: string | null;
+  firstName: string;
+  lastName: string;
+  email: string;
+  phone: string;
+  message: string;
+  agreeToTerms: boolean;
+  status: "new" | "in_progress" | "resolved";
+  createdAt: string;
+  updatedAt: string;
+  notes?: string;
+}
+
+export interface ContactMessagesResponse {
+  messages: ContactMessage[];
+  pagination: {
+    total: number;
+    limit: number;
+    offset: number;
+    hasMore: boolean;
+  };
+}
+
+export interface ContactMessageUpdateRequest {
+  status: "new" | "in_progress" | "resolved";
+  notes?: string;
+}

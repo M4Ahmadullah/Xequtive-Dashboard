@@ -58,12 +58,14 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   // Auto-close sidebar on mobile screens
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 768) {
         setSidebarOpen(false);
+        setSidebarCollapsed(false); // Reset collapsed state on mobile
       } else {
         setSidebarOpen(true);
       }
@@ -103,7 +105,10 @@ export default function DashboardLayout({
             md:shadow-xl
           `}
           >
-            <Sidebar />
+            <Sidebar 
+              isCollapsed={sidebarCollapsed}
+              onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
+            />
           </div>
 
           {/* Overlay to close sidebar on mobile */}

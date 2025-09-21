@@ -456,6 +456,16 @@ export default function AnalyticsPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* NEW: Payment Method Analytics */}
+        <div className="mt-8">
+          <PaymentMethodAnalyticsComponent />
+        </div>
+
+        {/* NEW: Wait Timer Analytics */}
+        <div className="mt-8">
+          <WaitTimerAnalyticsComponent />
+        </div>
       </div>
     </div>
   );
